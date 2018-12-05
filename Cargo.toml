@@ -1,0 +1,28 @@
+[package]
+name = "bunyan_view"
+version = "0.1.0"
+authors = ["Elijah Zupancic <elijah@zupancic.name>"]
+
+[features]
+default = ["serde_json/preserve_order"]
+
+[lib]
+name = "bunyan_view"
+path = "src/lib.rs"
+
+[[bin]]
+name = "bunyan"
+path = "src/main.rs"
+
+[dependencies]
+clap = "2.32.0"
+serde = "1.0.80"
+serde_json = "1.0.33"
+serde_derive = "1.0.80"
+httpstatus = "0.1.0"
+itertools = "0.7.9"
+flate2 = "1.0.5"
+
+[dev-dependencies]
+bytes = "0.4.11"
+pretty_assertions = "0.5.1"

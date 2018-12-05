@@ -1,0 +1,31 @@
+# levels
+[2012-02-08T22:56:50.856Z] TRACE: myservice/123 on example.com: My message
+[2012-02-08T22:56:51.856Z] DEBUG: myservice/123 on example.com: My message
+[2012-02-08T22:56:52.856Z]  INFO: myservice/123 on example.com: My message
+[2012-02-08T22:56:53.856Z]  WARN: myservice/123 on example.com: My message
+[2012-02-08T22:56:54.856Z] ERROR: myservice/123 on example.com: My message
+[2012-02-08T22:56:55.856Z] LVL55: myservice/123 on example.com: My message
+[2012-02-08T22:56:56.856Z] FATAL: myservice/123 on example.com: My message
+
+# extra fields
+[2012-02-08T22:56:52.856Z]  INFO: myservice/123 on example.com: My message (one=short)
+[2012-02-08T22:56:52.856Z]  INFO: myservice/123 on example.com: My message (two="short with space")
+[2012-02-08T22:56:52.856Z]  INFO: myservice/123 on example.com: My message
+    three: multi
+    line
+[2012-02-08T22:56:52.856Z]  INFO: myservice/123 on example.com: My message
+    four: over 50 chars long long long long long long long long long
+[2012-02-08T22:56:52.856Z]  INFO: myservice/123 on example.com: My message
+    five: {
+      "a": "json object"
+    }
+[2012-02-08T22:56:52.856Z]  INFO: myservice/123 on example.com: My message
+    six: [
+      "a",
+      "json",
+      "array"
+    ]
+
+# bogus
+not a JSON line
+{"hi": "there"}
