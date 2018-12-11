@@ -2,13 +2,13 @@ use Logger;
 use BunyanLine;
 
 use std::io::Write;
+use std::iter::Iterator;
 
 use httpstatus::StatusCode;
 
-use serde_json::{Value};
+use serde_json::Value;
 use serde_json::map::Map as Map;
 use LogLevel;
-use std::iter::Iterator;
 
 use itertools::multipeek;
 
@@ -68,8 +68,8 @@ fn is_empty_object(v: &Value) -> bool {
 }
 
 impl Logger for BunyanLine {
-    fn write_long_format(&self, writer : &mut Write) {
-        fn write_string_value_params(writer : &mut Write, line: &BunyanLine) {
+    fn write_long_format<W: Write>(&self, writer : &mut W) {
+        fn write_string_value_params<W: Write>(writer : &mut W, line: &BunyanLine) {
             let other_params = line.other.iter()
                 .filter(|&(_, v)| {
                     !is_multiline_string(v) && !v.is_array() && is_empty_object(v)
@@ -141,7 +141,7 @@ impl Logger for BunyanLine {
             }
         }
 
-        fn write_req_res_string_value_params(writer: &mut Write,
+        fn write_req_res_string_value_params<W: Write>(writer: &mut W,
                                              optional_params: &Option<Map<String, Value>>,
                                              param_name: &str,
                                              is_first: &mut bool,
@@ -192,7 +192,7 @@ impl Logger for BunyanLine {
             }
         }
 
-        fn write_multiline_string_value_params(writer: &mut Write, line: &BunyanLine) -> usize {
+        fn write_multiline_string_value_params<W: Write>(writer: &mut W, line: &BunyanLine) -> usize {
             let params = line.other.iter()
                 .filter(|&(_, v)| is_multiline_string(v))
                 .map(|(k, v)| (k, v.as_str().unwrap_or("undefined")));
@@ -216,7 +216,7 @@ impl Logger for BunyanLine {
             lines_written
         }
 
-        fn write_req(writer: &mut Write, optional_req: &Option<Map<String, Value>>) -> usize {
+        fn write_req<W: Write>(writer: &mut W, optional_req: &Option<Map<String, Value>>) -> usize {
             let mut lines_written: usize = 0;
 
             lines_written += write_req_summary(writer, optional_req);
@@ -225,7 +225,7 @@ impl Logger for BunyanLine {
             lines_written
         }
 
-        fn write_client_req(writer: &mut Write, optional_req: &Option<Map<String, Value>>) -> usize {
+        fn write_client_req<W: Write>(writer: &mut W, optional_req: &Option<Map<String, Value>>) -> usize {
             let mut lines_written: usize = 0;
 
             if let Some(client_req) = optional_req {
@@ -252,7 +252,7 @@ impl Logger for BunyanLine {
             lines_written
         }
 
-        fn write_req_summary(writer: &mut Write, optional_req: &Option<Map<String, Value>>) -> usize {
+        fn write_req_summary<W: Write>(writer: &mut W, optional_req: &Option<Map<String, Value>>) -> usize {
             let mut lines_written: usize = 0;
 
             if let Some(ref req_map) = optional_req {
@@ -268,8 +268,8 @@ impl Logger for BunyanLine {
             lines_written
         }
 
-        fn write_req_details(writer: &mut Write, optional_req: &Option<Map<String, Value>>) -> usize {
-            fn write_keys_and_vals(writer: &mut Write, val: &Value) -> usize{
+        fn write_req_details<W: Write>(writer: &mut W, optional_req: &Option<Map<String, Value>>) -> usize {
+            fn write_keys_and_vals<W: Write>(writer: &mut W, val: &Value) -> usize{
                 let mut lines_written: usize = 0;
 
                 if let Some(ref tuples) = val.as_object() {
@@ -326,7 +326,7 @@ impl Logger for BunyanLine {
             lines_written
         }
 
-        fn write_res(writer: &mut Write, optional_res: &Option<Map<String, Value>>) -> usize {
+        fn write_res<W: Write>(writer: &mut W, optional_res: &Option<Map<String, Value>>) -> usize {
             let mut lines_written: usize = 0;
 
             if let Some(ref res_map) = optional_res {
@@ -400,7 +400,7 @@ impl Logger for BunyanLine {
             lines_written
         }
 
-        fn write_res_status_code(writer: &mut Write, optional_code: Option<&Value>,
+        fn write_res_status_code<W: Write>(writer: &mut W, optional_code: Option<&Value>,
                                  option_http_version: Option<&str>) -> usize {
             let mut lines_written: usize = 0;
 
@@ -448,7 +448,7 @@ impl Logger for BunyanLine {
             lines_written
         }
 
-        fn write_headers(writer: &mut Write, headers_val: &Value) -> usize {
+        fn write_headers<W: Write>(writer: &mut W, headers_val: &Value) -> usize {
             let mut lines_written: usize = 0;
 
             if let Some(ref headers) = headers_val.as_object() {
@@ -467,7 +467,7 @@ impl Logger for BunyanLine {
                 .next().is_some()
         }
 
-        fn write_object_value_params(writer : &mut Write, line: &BunyanLine) -> usize {
+        fn write_object_value_params<W: Write>(writer : &mut W, line: &BunyanLine) -> usize {
             let mut lines_written: usize = 0;
 
             let params = line.other.iter()
@@ -494,7 +494,7 @@ impl Logger for BunyanLine {
             lines_written
         }
 
-        fn write_object(writer : &mut Write, val : &Value, indent: usize) -> usize {
+        fn write_object<W: Write>(writer : &mut W, val : &Value, indent: usize) -> usize {
             let mut lines_written = 0;
 
             if val.is_string() || val.is_number() || val.is_boolean() {
@@ -569,7 +569,7 @@ impl Logger for BunyanLine {
             lines_written
         }
 
-        fn write_err(writer : &mut Write, err_map: &Map<String, Value>) -> usize {
+        fn write_err<W: Write>(writer : &mut W, err_map: &Map<String, Value>) -> usize {
             let mut lines_written = 0;
 
             if let Some(ref stack_val) = err_map.get("stack") {

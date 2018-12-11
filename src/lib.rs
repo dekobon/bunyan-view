@@ -7,15 +7,13 @@ extern crate itertools;
 
 mod long_format_logger;
 
-use std::io::BufRead;
-use std::io::Write;
-
-use serde_json::{Value};
-use serde_json::map::Map as Map;
 use std::error::Error;
+use std::fmt::{Display, Formatter};
+use std::io::{BufRead, Write};
+
+use serde_json::Value;
+use serde_json::map::Map as Map;
 use serde_json::Error as SerdeError;
-use std::fmt::Display;
-use std::fmt::Formatter;
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Clone, Hash)]
 pub enum LogLevel {
@@ -131,7 +129,7 @@ pub struct BunyanLine {
 }
 
 pub trait Logger {
-    fn write_long_format(&self, writer : &mut Write);
+    fn write_long_format<W: Write>(&self, writer : &mut W);
 }
 
 pub enum LogFormat {
@@ -139,11 +137,11 @@ pub enum LogFormat {
 }
 
 pub trait LogWriter {
-    fn write_log(&self, writer: &mut Write, log: BunyanLine, indent: Option<usize>);
+    fn write_log<W: Write>(&self, writer: &mut W, log: BunyanLine, indent: Option<usize>);
 }
 
 impl LogWriter for LogFormat {
-    fn write_log(&self, writer: &mut Write, log: BunyanLine, indent: Option<usize>) {
+    fn write_log<W: Write>(&self, writer: &mut W, log: BunyanLine, indent: Option<usize>) {
         log.write_long_format(writer)
     }
 }
@@ -220,8 +218,11 @@ fn convert_from_raw_serialized_format(raw: RawBunyanLine) -> BunyanLine {
     }
 }
 
-pub fn write_bunyan_output(writer: &mut Write, reader: Box<BufRead>, format: LogFormat, is_strict: &bool,
-                           is_debug: &bool, indent: Option<usize>) {
+pub fn write_bunyan_output<W, R>(writer: &mut W, reader: R, format: LogFormat,
+    is_strict: &bool, is_debug: &bool, indent: Option<usize>)
+    where W: Write,
+    R: BufRead
+{
     let mut line_no: usize = 0;
 
     reader.lines().for_each(|raw_line| {
