@@ -5,6 +5,8 @@ extern crate serde_json;
 extern crate httpstatus;
 extern crate itertools;
 
+#[macro_use]
+mod macros;
 mod long_format_logger;
 
 use std::error::Error;
@@ -146,7 +148,7 @@ impl LogWriter for LogFormat {
     }
 }
 
-fn convert_value_to_map(val: Value) -> Map<String, Value> {
+fn convert_value_to_map(val: &Value) -> Map<String, Value> {
     if val.is_object() {
         val.as_object().unwrap().clone()
     } else {
@@ -171,13 +173,13 @@ fn convert_from_raw_serialized_format(raw: RawBunyanLine) -> BunyanLine {
     let other = raw.other;
 
     let client_res = match raw.client_res {
-        Some(cr) => Some(convert_value_to_map(cr)),
+        Some(cr) => Some(convert_value_to_map(&cr)),
         None => None
     };
 
     let res = match raw.res {
         Some(r) => {
-            let map = convert_value_to_map(r);
+            let map = convert_value_to_map(&r);
             Some(map)
         },
         None => None
@@ -210,16 +212,16 @@ fn convert_from_raw_serialized_format(raw: RawBunyanLine) -> BunyanLine {
         req_id: raw.req_id,
         req: raw.req,
         client_req: raw.client_req,
-        client_res: client_res,
-        res: res,
+        client_res,
+        res,
         err: raw.err,
-        src: src,
-        other: other
+        src,
+        other
     }
 }
 
-pub fn write_bunyan_output<W, R>(writer: &mut W, reader: R, format: LogFormat,
-    is_strict: &bool, is_debug: &bool, indent: Option<usize>)
+pub fn write_bunyan_output<W, R>(writer: &mut W, reader: R, format: &LogFormat,
+    is_strict: bool, is_debug: bool, indent: Option<usize>)
     where W: Write,
     R: BufRead
 {
@@ -231,8 +233,8 @@ pub fn write_bunyan_output<W, R>(writer: &mut W, reader: R, format: LogFormat,
                 line_no += 1;
 
                 // Don't process empty lines because the output isn't useful to our users
-                if !*is_strict && line.trim().is_empty() {
-                    writeln!(writer);
+                if !is_strict && line.trim().is_empty() {
+                    wln!(writer);
                 } else {
                     let json_result: Result<RawBunyanLine, SerdeError> = serde_json::from_str(&line);
                     match json_result {
@@ -241,7 +243,7 @@ pub fn write_bunyan_output<W, R>(writer: &mut W, reader: R, format: LogFormat,
                             format.write_log(writer, log, indent)
                         },
                         Err(e) => {
-                            if !*is_strict || *is_debug {
+                            if !is_strict || is_debug {
                                 let orig_msg = e.to_string().clone();
                                 let mut split = orig_msg.split(" line ");
 
@@ -250,13 +252,13 @@ pub fn write_bunyan_output<W, R>(writer: &mut W, reader: R, format: LogFormat,
                                     None => e.description()
                                 };
 
-                                if *is_debug {
-                                    writeln!(std::io::stderr(), "{} line {} column: {}",
+                                if is_debug {
+                                    wln!(std::io::stderr(), "{} line {} column: {}",
                                              msg, line_no, e.column());
                                 }
 
-                                if !*is_strict {
-                                    writeln!(writer, "{}", line);
+                                if !is_strict {
+                                    wln!(writer, "{}", line);
                                 }
                             }
                         }

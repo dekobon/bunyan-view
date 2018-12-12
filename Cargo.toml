@@ -2,6 +2,7 @@
 name = "bunyan_view"
 version = "0.1.0"
 authors = ["Elijah Zupancic <elijah@zupancic.name>"]
+edition = "2018"
 
 [features]
 default = ["serde_json/preserve_order"]

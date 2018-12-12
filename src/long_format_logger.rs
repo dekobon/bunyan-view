@@ -1,5 +1,4 @@
-use Logger;
-use BunyanLine;
+use crate::{BunyanLine, Logger, LogLevel};
 
 use std::io::Write;
 use std::iter::Iterator;
@@ -8,7 +7,6 @@ use httpstatus::StatusCode;
 
 use serde_json::Value;
 use serde_json::map::Map as Map;
-use LogLevel;
 
 use itertools::multipeek;
 
@@ -21,36 +19,10 @@ const RES_EXTRA: [&str; 4] = ["statusCode", "header", "headers", "trailer"];
 const CLIENT_RES_EXTRA: [&str; 5] = ["statusCode", "body", "header", "headers", "trailer"];
 const ERR_EXTRA: [&str; 3] = ["message", "name", "stack"];
 
-macro_rules! string_or_value {
-    ($val:expr) => {
-        if $val.is_string() {
-            $val.as_str().unwrap_or("undefined").to_string()
-        } else if $val.is_null() {
-            "null".to_string()
-        } else {
-            $val.to_string()
-        }
-    };
-}
-
-macro_rules! get_or_default{
-    ($map:expr, $key:expr, $default:expr) => {
-        if let Some(ref val) = $map.get($key) {
-            if val.is_string() {
-                val.as_str().unwrap_or($default).to_string()
-            } else {
-                val.to_string()
-            }
-        } else {
-            $default.to_string()
-        }
-    }
-}
-
 fn is_multiline_string(v: &Value) -> bool {
     if v.is_string() {
         if let Some(val) = v.as_str() {
-            val.contains("\n") || val.len() > LONG_LINE_SIZE
+            val.contains('\n') || val.len() > LONG_LINE_SIZE
         } else {
             true
         }
@@ -95,27 +67,27 @@ impl Logger for BunyanLine {
 
             if let Some(ref req_id) = optional_req_id {
                 is_first = false;
-                write!(writer, " (req_id={}", req_id);
+                w!(writer, " (req_id={}", req_id);
             }
 
             for (k, v) in params {
                 if is_first {
-                    write!(writer, " (");
+                    w!(writer, " (");
                     is_first = false;
                 } else {
-                    write!(writer, ", ");
+                    w!(writer, ", ");
                 }
 
                 if v.is_string() {
                     if let Some(param_val) = v.as_str() {
-                        if param_val.contains(" ") {
-                            write!(writer, "{}=\"{}\"", k, param_val);
+                        if param_val.contains(' ') {
+                            w!(writer, "{}=\"{}\"", k, param_val);
                         } else {
-                            write!(writer, "{}={}", k, param_val);
+                            w!(writer, "{}={}", k, param_val);
                         }
                     }
                 } else {
-                    write!(writer, "{}={}", k, v);
+                    w!(writer, "{}={}", k, v);
                 }
             }
 
@@ -137,7 +109,7 @@ impl Logger for BunyanLine {
 
             if has_any_params || had_req_params || had_client_req_params || had_res_params
                 || had_client_res_params || had_err_params {
-                write!(writer, ")");
+                w!(writer, ")");
             }
         }
 
@@ -146,7 +118,7 @@ impl Logger for BunyanLine {
                                              param_name: &str,
                                              is_first: &mut bool,
                                              is_extra_fn: &Fn(&str) -> bool) -> bool {
-            fn extra_item_filter(k: &String, v: &Value) -> bool {
+            fn extra_item_filter(k: &str, v: &Value) -> bool {
                 k != "trailer" && (v.is_null() || v.is_boolean())
             }
 
@@ -162,10 +134,10 @@ impl Logger for BunyanLine {
                     if items.peek().is_some() {
                         for (k, v) in items {
                             if *is_first {
-                                write!(writer, " (");
+                                w!(writer, " (");
                                 *is_first = false;
                             } else {
-                                write!(writer, ", ");
+                                w!(writer, ", ");
                             }
 
                             let param_val = string_or_value!(v);
@@ -176,10 +148,10 @@ impl Logger for BunyanLine {
                                 k.as_str()
                             };
 
-                            if param_val.contains(" ") {
-                                write!(writer, "{}=\"{}\"", display_key, param_val);
+                            if param_val.contains(' ') {
+                                w!(writer, "{}=\"{}\"", display_key, param_val);
                             } else {
-                                write!(writer, "{}={}", display_key, param_val);
+                                w!(writer, "{}={}", display_key, param_val);
                             }
                         }
 
@@ -204,10 +176,10 @@ impl Logger for BunyanLine {
 
                 for line in v.lines() {
                     if is_first {
-                        writeln!(writer, "{:indent$}{}: {}", "", k, line, indent=BASE_INDENT_SIZE);
+                        wln!(writer, "{:indent$}{}: {}", "", k, line, indent=BASE_INDENT_SIZE);
                         is_first = false;
                     } else {
-                        writeln!(writer, "{:indent$}{}", "", line, indent=BASE_INDENT_SIZE);
+                        wln!(writer, "{:indent$}{}", "", line, indent=BASE_INDENT_SIZE);
                     }
                     lines_written += 1;
                 }
@@ -233,15 +205,15 @@ impl Logger for BunyanLine {
 
                 if let Some(address_val) = client_req.get("address") {
                     if address_val.is_string() {
-                        write!(writer, "{:indent$}Host: {}", "", string_or_value!(address_val), indent = BASE_INDENT_SIZE);
+                        w!(writer, "{:indent$}Host: {}", "", string_or_value!(address_val), indent = BASE_INDENT_SIZE);
 
                         if let Some(port_val) = client_req.get("port") {
                             if port_val.is_string() || port_val.is_number() {
-                                write!(writer, ":{}", string_or_value!(port_val));
+                                w!(writer, ":{}", string_or_value!(port_val));
                             }
                         }
 
-                        writeln!(writer);
+                        wln!(writer);
                         lines_written += 1;
                     }
                 }
@@ -256,12 +228,12 @@ impl Logger for BunyanLine {
             let mut lines_written: usize = 0;
 
             if let Some(ref req_map) = optional_req {
-                write!(writer, "{:indent$}", "", indent = BASE_INDENT_SIZE);
+                w!(writer, "{:indent$}", "", indent = BASE_INDENT_SIZE);
 
-                write!(writer, "{} ", get_or_default!(req_map, "method", "undefined"));
-                write!(writer, "{} ", get_or_default!(req_map, "url", "undefined"));
-                write!(writer, "HTTP/{}", get_or_default!(req_map, "httpVersion", "1.1"));
-                writeln!(writer);
+                w!(writer, "{} ", get_or_default!(req_map, "method", "undefined"));
+                w!(writer, "{} ", get_or_default!(req_map, "url", "undefined"));
+                w!(writer, "HTTP/{}", get_or_default!(req_map, "httpVersion", "1.1"));
+                wln!(writer);
                 lines_written += 1;
             }
 
@@ -274,16 +246,16 @@ impl Logger for BunyanLine {
 
                 if let Some(ref tuples) = val.as_object() {
                     for (k, v) in tuples.iter() {
-                        write!(writer, "{:indent$}{}:", "", k, indent = BASE_INDENT_SIZE);
+                        w!(writer, "{:indent$}{}:", "", k, indent = BASE_INDENT_SIZE);
 
                         let mut is_first = true;
 
                         for line in string_or_value!(v).lines() {
                             if is_first {
-                                writeln!(writer, " {}", line);
+                                wln!(writer, " {}", line);
                                 is_first = false;
                             } else {
-                                writeln!(writer, "{:indent$}{}", "", line,
+                                wln!(writer, "{:indent$}{}", "", line,
                                          indent = BASE_INDENT_SIZE);
                             }
                             lines_written += 1;
@@ -293,7 +265,7 @@ impl Logger for BunyanLine {
                     for line in string_val.lines() {
                         if line.trim().is_empty() { continue; }
 
-                        writeln!(writer, "{:indent$}{}", "", line, indent = BASE_INDENT_SIZE);
+                        wln!(writer, "{:indent$}{}", "", line, indent = BASE_INDENT_SIZE);
                         lines_written += 1;
                     }
                 }
@@ -313,7 +285,7 @@ impl Logger for BunyanLine {
                 }
 
                 if let Some(ref body) = req_map.get("body") {
-                    writeln!(writer, "{:indent$}{}", "", string_or_value!(body),
+                    wln!(writer, "{:indent$}{}", "", string_or_value!(body),
                              indent = BASE_INDENT_SIZE);
                     lines_written += 1;
                 }
@@ -351,11 +323,11 @@ impl Logger for BunyanLine {
                         lines_written += write_res_status_code(writer, res_map.get("statusCode"),
                                                                http_version);
 
-                        let mut lines = headers_str.lines();
+                        let lines = headers_str.lines();
 
                         for line in lines {
                             if line.is_empty() { continue; }
-                            writeln!(writer, "{:indent$}{}", "", line, indent = BASE_INDENT_SIZE);
+                            wln!(writer, "{:indent$}{}", "", line, indent = BASE_INDENT_SIZE);
                             lines_written += 1;
                         }
                     } else if headers.is_object() || headers.is_null() {
@@ -373,10 +345,10 @@ impl Logger for BunyanLine {
                         let body = string_or_value!(body_val);
 
                         if !body.is_empty() {
-                            writeln!(writer);
+                            wln!(writer);
                             lines_written += 1;
                             for line in body.lines() {
-                                writeln!(writer, "{:indent$}{}", "", line, indent = BASE_INDENT_SIZE);
+                                wln!(writer, "{:indent$}{}", "", line, indent = BASE_INDENT_SIZE);
                                 lines_written += 1;
                             }
                         }
@@ -389,9 +361,9 @@ impl Logger for BunyanLine {
                     }
 
                     if v.is_object() {
-                        write!(writer, "{:indent$}res.{}: ", "", k, indent = BASE_INDENT_SIZE);
+                        w!(writer, "{:indent$}res.{}: ", "", k, indent = BASE_INDENT_SIZE);
                         lines_written += write_object(writer, v, BASE_INDENT_SIZE);
-                        writeln!(writer);
+                        wln!(writer);
                         lines_written += 1;
                     }
                 }
@@ -409,7 +381,7 @@ impl Logger for BunyanLine {
                     if json_value.is_number() {
                         match json_value.as_u64() {
                             Some(code) => {
-                                if code > std::u16::MAX as u64 {
+                                if code > u64::from(std::u16::MAX) {
                                     None
                                 } else {
                                     Some(code as u16)
@@ -437,11 +409,11 @@ impl Logger for BunyanLine {
 
             if let Some(code) = numeric_status_code {
                 let http_version = option_http_version.unwrap_or("1.1");
-                write!(writer, "{:indent$}HTTP/{}", "", http_version, indent = BASE_INDENT_SIZE);
+                w!(writer, "{:indent$}HTTP/{}", "", http_version, indent = BASE_INDENT_SIZE);
 
                 let status_code = StatusCode::from(code);
-                write!(writer, " {} {}", code, status_code.reason_phrase());
-                writeln!(writer);
+                w!(writer, " {} {}", code, status_code.reason_phrase());
+                wln!(writer);
                 lines_written += 1;
             }
 
@@ -453,7 +425,7 @@ impl Logger for BunyanLine {
 
             if let Some(ref headers) = headers_val.as_object() {
                 for (k, v) in headers.iter() {
-                    writeln!(writer, "{:indent$}{}: {}", "", k, string_or_value!(v),
+                    wln!(writer, "{:indent$}{}: {}", "", k, string_or_value!(v),
                              indent = BASE_INDENT_SIZE);
                     lines_written += 1;
                 }
@@ -463,8 +435,7 @@ impl Logger for BunyanLine {
         }
 
         fn has_object_value_params(line: &BunyanLine) -> bool {
-            line.other.iter().filter(|&(_, v)| v.is_object() || v.is_array())
-                .next().is_some()
+            line.other.iter().any(|(_, v)| v.is_object() || v.is_array())
         }
 
         fn write_object_value_params<W: Write>(writer : &mut W, line: &BunyanLine) -> usize {
@@ -476,18 +447,18 @@ impl Logger for BunyanLine {
             let mut is_first = true;
 
             for (k, v) in params {
-                if !is_first {
-                    writeln!(writer, "{:indent$}{}", "", DIVIDER, indent=BASE_INDENT_SIZE);
-                    lines_written += 1;
-                } else {
+                if is_first {
                     is_first = false;
+                } else {
+                    wln!(writer, "{:indent$}{}", "", DIVIDER, indent=BASE_INDENT_SIZE);
+                    lines_written += 1;
                 }
 
-                write!(writer, "{:indent$}", "", indent=BASE_INDENT_SIZE);
-                write!(writer, "{}: ", k);
+                w!(writer, "{:indent$}", "", indent=BASE_INDENT_SIZE);
+                w!(writer, "{}: ", k);
 
                 lines_written += write_object(writer, v,  BASE_INDENT_SIZE);
-                writeln!(writer);
+                wln!(writer);
                 lines_written += 1;
             }
 
@@ -498,69 +469,65 @@ impl Logger for BunyanLine {
             let mut lines_written = 0;
 
             if val.is_string() || val.is_number() || val.is_boolean() {
-                write!(writer, "{}", val);
+                w!(writer, "{}", val);
             } else if val.is_null() {
-                write!(writer, "null");
+                w!(writer, "null");
             } else if val.is_object() {
                 match val.as_object() {
                     None => {
-                        writeln!(writer, "{{}}");
+                        wln!(writer, "{{}}");
                         lines_written += 1;
                     },
                     Some(map) => {
                         let new_indent = indent + 2;
-
                         let len = map.len();
-                        let mut pos: usize = 0;
 
-                        writeln!(writer, "{{");
-                        for (k, v) in map {
-                            pos += 1;
-                            write!(writer, "{:indent$}\"{}\": ", "", k, indent=new_indent);
+                        wln!(writer, "{{");
+                        for (pos, (k, v)) in map.iter().enumerate() {
+                            w!(writer, "{:indent$}\"{}\": ", "", k, indent=new_indent);
                             lines_written += write_object(writer, v, new_indent);
 
-                            if pos < len {
-                                writeln!(writer, ",");
+                            if pos < len - 1 {
+                                wln!(writer, ",");
                             } else {
-                                writeln!(writer);
+                                wln!(writer);
                             }
                             lines_written += 1;
                         }
 
-                        write!(writer, "{:indent$}}}", "", indent=indent);
+                        w!(writer, "{:indent$}}}", "", indent=indent);
                     }
                 }
             } else if val.is_array() {
                 match val.as_array() {
                     None => {
-                        writeln!(writer, "[]");
+                        wln!(writer, "[]");
                         lines_written += 1;
                     },
                     Some(array) => {
                         let new_indent = indent + 2;
 
                         if array.is_empty() {
-                            write!(writer, "[]");
+                            w!(writer, "[]");
                         } else {
                             let len = array.len();
-                            let mut pos: usize = 0;
 
-                            writeln!(writer, "[");
+                            wln!(writer, "[");
                             lines_written += 1;
-                            for v in array {
-                                pos += 1;
-                                write!(writer, "{:indent$}", "", indent = new_indent);
+
+                            for (pos, v) in array.iter().enumerate() {
+                                w!(writer, "{:indent$}", "", indent = new_indent);
                                 lines_written += write_object(writer, v, new_indent);
 
-                                if pos < len {
-                                    writeln!(writer, ",");
+                                if pos < len - 1 {
+                                    wln!(writer, ",");
                                 } else {
-                                    writeln!(writer);
+                                    wln!(writer);
                                 }
                                 lines_written += 1;
                             }
 
-                            write!(writer, "{:indent$}]", "", indent = indent);
+                            w!(writer, "{:indent$}]", "", indent = indent);
                         }
                     }
                 }
@@ -575,12 +542,12 @@ impl Logger for BunyanLine {
             if let Some(ref stack_val) = err_map.get("stack") {
                 if let Some(ref stack_str) = stack_val.as_str() {
                     for line in stack_str.lines() {
-                        writeln!(writer, "{:indent$}{}", "", line, indent=BASE_INDENT_SIZE);
+                        wln!(writer, "{:indent$}{}", "", line, indent=BASE_INDENT_SIZE);
                         lines_written += 1;
                     }
                 } else if let Some(ref stack_array) = stack_val.as_array() {
                     for line in stack_array.iter() {
-                        writeln!(writer, "{:indent$}{}", "", string_or_value!(line),
+                        wln!(writer, "{:indent$}{}", "", string_or_value!(line),
                                  indent=BASE_INDENT_SIZE);
                         lines_written += 1;
                     }
@@ -591,49 +558,49 @@ impl Logger for BunyanLine {
         }
 
         let log_level: LogLevel = self.level.into();
-        write!(writer, "[{}] {}: {}/",
+        w!(writer, "[{}] {}: {}/",
                self.time, log_level, self.name);
 
         if let Some(ref component) = self.component {
-            write!(writer, "{}/", component);
+            w!(writer, "{}/", component);
         }
 
-        write!(writer, "{} on {}", self.pid, self.hostname);
+        w!(writer, "{} on {}", self.pid, self.hostname);
 
         if let Some(ref src) = self.src {
             let mut src_written = false;
             if let Some(ref file_val) = src.get("file") {
                 if let Some(ref file) = file_val.as_str() {
                     src_written = true;
-                    write!(writer, " ({}", file);
+                    w!(writer, " ({}", file);
                 }
             }
             if let Some(ref line_val) = src.get("line") {
                 if line_val.is_string() || line_val.is_number() {
-                    write!(writer, ":{}", string_or_value!(line_val));
+                    w!(writer, ":{}", string_or_value!(line_val));
                 }
             }
             if let Some(ref func_val) = src.get("func") {
                 if func_val.is_string() {
-                    write!(writer, " in {}", string_or_value!(func_val));
+                    w!(writer, " in {}", string_or_value!(func_val));
                 }
             }
 
             if src_written {
-                write!(writer, ")");
+                w!(writer, ")");
             }
         }
 
-        write!(writer, ": {}", self.msg);
+        w!(writer, ": {}", self.msg);
 
         write_string_value_params(writer, self);
-        writeln!(writer);
+        wln!(writer);
 
         let mut needs_divider = false;
 
         if self.req.is_some() {
             if needs_divider {
-                writeln!(writer, "{:indent$}{}", "", DIVIDER, indent = BASE_INDENT_SIZE);
+                wln!(writer, "{:indent$}{}", "", DIVIDER, indent = BASE_INDENT_SIZE);
             }
 
             needs_divider = write_req(writer, &self.req) > 0;
@@ -641,7 +608,7 @@ impl Logger for BunyanLine {
 
         if self.client_req.is_some() {
             if needs_divider  {
-                writeln!(writer, "{:indent$}{}", "", DIVIDER, indent = BASE_INDENT_SIZE);
+                wln!(writer, "{:indent$}{}", "", DIVIDER, indent = BASE_INDENT_SIZE);
             }
 
             needs_divider = write_client_req(writer, &self.client_req) > 0;
@@ -649,7 +616,7 @@ impl Logger for BunyanLine {
 
         if self.res.is_some() {
             if needs_divider {
-                writeln!(writer, "{:indent$}{}", "", DIVIDER, indent = BASE_INDENT_SIZE);
+                wln!(writer, "{:indent$}{}", "", DIVIDER, indent = BASE_INDENT_SIZE);
             }
 
             needs_divider = write_res(writer, &self.res) > 0;
@@ -657,7 +624,7 @@ impl Logger for BunyanLine {
 
         if self.client_res.is_some() {
             if needs_divider {
-                writeln!(writer, "{:indent$}{}", "", DIVIDER, indent = BASE_INDENT_SIZE);
+                wln!(writer, "{:indent$}{}", "", DIVIDER, indent = BASE_INDENT_SIZE);
             }
 
             needs_divider = write_res(writer, &self.client_res) > 0;
@@ -665,7 +632,7 @@ impl Logger for BunyanLine {
 
         if has_object_value_params(self) {
             if needs_divider {
-                writeln!(writer, "{:indent$}{}", "", DIVIDER, indent = BASE_INDENT_SIZE);
+                wln!(writer, "{:indent$}{}", "", DIVIDER, indent = BASE_INDENT_SIZE);
             }
 
            needs_divider = write_object_value_params(writer, self) > 0;
@@ -673,7 +640,7 @@ impl Logger for BunyanLine {
 
         if let Some(ref err_map) = self.err {
             if needs_divider {
-                writeln!(writer, "{:indent$}{}", "", DIVIDER, indent = BASE_INDENT_SIZE);
+                wln!(writer, "{:indent$}{}", "", DIVIDER, indent = BASE_INDENT_SIZE);
             }
 
             needs_divider = write_err(writer, err_map) > 0;
@@ -681,7 +648,7 @@ impl Logger for BunyanLine {
 
         if self.other.iter().any(|(_, v)| is_multiline_string(v)) {
             if needs_divider {
-                writeln!(writer, "{:indent$}{}", "", DIVIDER, indent = BASE_INDENT_SIZE);
+                wln!(writer, "{:indent$}{}", "", DIVIDER, indent = BASE_INDENT_SIZE);
             }
 
             write_multiline_string_value_params(writer, self);

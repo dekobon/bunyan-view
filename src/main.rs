@@ -53,14 +53,14 @@ fn main() {
                 };
 
                 bunyan_view::write_bunyan_output(&mut std::io::stdout(), reader,
-                                                 LogFormat::Long, &is_strict, &is_debug,
+                                                 &LogFormat::Long, is_strict, is_debug,
                                                  Some(4));
             }
         },
         None => {
             let reader = Box::new(BufReader::new(std::io::stdin()));
             bunyan_view::write_bunyan_output(&mut std::io::stdout(), reader,
-                                             LogFormat::Long, &is_strict, &is_debug,
+                                             &LogFormat::Long, is_strict, is_debug,
                                              Some(4));
         }
     }
