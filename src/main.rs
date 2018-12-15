@@ -5,8 +5,7 @@ extern crate bunyan_view;
 extern crate flate2;
 
 use std::fs::File;
-use std::io::BufReader;
-use std::io::BufRead;
+use std::io::{BufReader, BufRead};
 use flate2::read::GzDecoder;
 use bunyan_view::LogFormat;
 use clap::{Arg, App, AppSettings};
@@ -44,7 +43,17 @@ fn main() {
     match matches.values_of("FILE") {
         Some(filenames) => {
             for filename in filenames {
-                let file = File::open(filename).expect("File not found");
+                let file_result = File::open(filename);
+
+                match file_result {
+                    Ok(_) => {},
+                    Err(e) => {
+                        eprintln!("{}: {}", e, filename);
+                        std::process::exit(1);
+                    }
+                }
+
+                let file = file_result.unwrap();
 
                 let reader: Box<BufRead> = if filename.ends_with(".gz") {
                     Box::new(BufReader::new(GzDecoder::new(BufReader::new(file))))
