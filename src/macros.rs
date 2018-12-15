@@ -1,13 +1,14 @@
 macro_rules! w {
-    ($dst:expr, $($arg:tt)*) => (
+    ($dst:expr, $($arg:tt)*) => {{
+        let result = $dst.write_fmt(format_args!($($arg)*));
 
-    let result = $dst.write_fmt(format_args!($($arg)*));
-    match result {
-        Ok(_) => {},
-        Err(e) => {
-            panic!(e);
+        match result {
+            Ok(_) => {},
+            Err(e) => {
+                panic!(e);
+            }
         }
-    })
+    }}
 }
 
 macro_rules! wln {
@@ -17,7 +18,7 @@ macro_rules! wln {
     ($dst:expr,) => (
         w!($dst)
     );
-    ($dst:expr, $($arg:tt)*) => (
+    ($dst:expr, $($arg:tt)*) => {{
         let result = $dst.write_fmt(format_args!($($arg)*));
         match result {
             Ok(_) => {},
@@ -26,7 +27,7 @@ macro_rules! wln {
             }
         };
         w!($dst, "\n");
-    );
+    }};
 }
 
 macro_rules! string_or_value {

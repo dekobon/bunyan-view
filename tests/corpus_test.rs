@@ -158,3 +158,8 @@ fn long_req_with_newlines() {
 fn long_req_with_trailers() {
     assert_equals_to_file("tests/corpus/req-with-trailers.log");
 }
+
+#[test]
+fn long_res_with_empty_object() {
+    assert_equals_to_file("tests/corpus/res-with-empty-object.log");
+}
