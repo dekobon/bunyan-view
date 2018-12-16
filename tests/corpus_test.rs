@@ -163,3 +163,8 @@ fn long_req_with_trailers() {
 fn long_res_with_empty_object() {
     assert_equals_to_file("tests/corpus/res-with-empty-object.log");
 }
+
+#[test]
+fn long_with_numeric_req_id() {
+    assert_equals_to_file("tests/corpus/with-numeric-req-id.log");
+}

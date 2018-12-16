@@ -19,24 +19,44 @@ const RES_EXTRA: [&str; 4] = ["statusCode", "header", "headers", "trailer"];
 const CLIENT_RES_EXTRA: [&str; 5] = ["statusCode", "body", "header", "headers", "trailer"];
 const ERR_EXTRA: [&str; 3] = ["message", "name", "stack"];
 
-fn is_multiline_string(v: &Value) -> bool {
-    if v.is_string() {
-        if let Some(val) = v.as_str() {
-            val.contains('\n') || val.len() > LONG_LINE_SIZE
-        } else {
-            true
-        }
-    } else {
-        false
+/// Returns true if the given JSON value is a JSON string and it has a newline character or it is
+/// longer than the LONG_LINE_SIZE (50 characterS).
+///
+/// # Arguments
+///
+/// * `json_value` - a JSON value of unknown type
+fn is_multiline_string(json_value: &Value) -> bool {
+    match json_value {
+        Value::String(string) => {
+            string.contains('\n') || string.len() > LONG_LINE_SIZE
+        },
+        _ => false
     }
 }
 
-fn is_object_with_keys(v: &Value) -> bool {
-    v.is_object() && !v.as_object().unwrap_or(&Map::new()).is_empty()
+/// Returns true if the given JSON value is a JSON object and it is not empty.
+///
+/// # Arguments
+///
+/// * `json_value` - a JSON value of unknown type
+fn is_object_with_keys(json_value: &Value) -> bool {
+    if !json_value.is_object() {
+        return false;
+    }
+
+    match json_value.as_object() {
+        Some(map) => !map.is_empty(),
+        None => true
+    }
 }
 
-fn is_empty_object(v: &Value) -> bool {
-    !is_object_with_keys(v)
+/// Returns true if the given JSON value is not a JSON object and or it is an empty JSON object.
+///
+/// # Arguments
+///
+/// * `json_value` - a JSON value of unknown type
+fn is_empty_object(json_value: &Value) -> bool {
+    !is_object_with_keys(json_value)
 }
 
 fn write_string_value_params<W: Write>(writer : &mut W, line: &BunyanLine) {
@@ -46,15 +66,12 @@ fn write_string_value_params<W: Write>(writer : &mut W, line: &BunyanLine) {
         });
     let mut params = multipeek(other_params);
 
-    let optional_req_id: Option<&str> = match line.req_id {
-        Some(ref req_id_val) => {
-            if req_id_val.is_string() || req_id_val.is_number() {
-                match req_id_val.as_str() {
-                    Some(req_id) => Some(req_id),
-                    None => None
-                }
-            } else {
-                None
+    let optional_req_id: Option<String> = match line.req_id {
+        Some(ref req_id) => {
+            match req_id {
+                Value::String(req_id_string) => Some(req_id_string.clone()),
+                Value::Number(req_id_number) => Some(format!("{}", req_id_number)),
+                _ => None
             }
         },
         None => None
@@ -76,13 +93,11 @@ fn write_string_value_params<W: Write>(writer : &mut W, line: &BunyanLine) {
             w!(writer, ", ");
         }
 
-        if v.is_string() {
-            if let Some(param_val) = v.as_str() {
-                if param_val.contains(' ') {
-                    w!(writer, "{}=\"{}\"", k, param_val);
-                } else {
-                    w!(writer, "{}={}", k, param_val);
-                }
+        if let Some(param_val) = v.as_str() {
+            if param_val.contains(' ') {
+                w!(writer, "{}=\"{}\"", k, param_val);
+            } else {
+                w!(writer, "{}={}", k, param_val);
             }
         } else {
             w!(writer, "{}={}", k, v);
@@ -358,15 +373,13 @@ fn write_res<W: Write>(writer: &mut W, optional_res: &Option<Map<String, Value>>
                 continue;
             }
 
-            if let Some(ref inner_obj) = v.as_object() {
-                // Since empty maps are displayed on top in the first line, we skip them
-                if !inner_obj.is_empty() {
-                    w!(writer, "{:indent$}res.{}: ", "", k, indent = BASE_INDENT_SIZE);
+            // Since empty maps are displayed on top in the first line, we skip them
+            if !is_empty_object(v) {
+                w!(writer, "{:indent$}res.{}: ", "", k, indent = BASE_INDENT_SIZE);
 
-                    lines_written += write_object(writer, v, BASE_INDENT_SIZE);
-                    wln!(writer);
-                    lines_written += 1;
-                }
+                lines_written += write_object(writer, v, BASE_INDENT_SIZE);
+                wln!(writer);
+                lines_written += 1;
             }
         }
     }
@@ -416,10 +429,7 @@ fn json_string_or_number_as_u16(val: &Value) -> Option<u16> {
                 Err(_e) => None
             }
         },
-        Value::Null => None,
-        Value::Bool(_) => None,
-        Value::Array(_) => None,
-        Value::Object(_) => None
+        _ => None
     }
 }
 
