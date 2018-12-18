@@ -7,7 +7,7 @@ extern crate flate2;
 use std::fs::File;
 use std::io::{BufReader, BufRead};
 use flate2::read::GzDecoder;
-use bunyan_view::LogFormat;
+use bunyan_view::{LogFormat, LogLevel, LoggerOutputConfig};
 use clap::{Arg, App, AppSettings};
 
 fn main() {
@@ -30,6 +30,12 @@ fn main() {
             .long("strict")
             .takes_value(false)
             .required(false))
+        .arg(Arg::with_name("level")
+            .help("Only show messages at or above the specified level. You can specify level *names* or the internal numeric values.")
+            .long("level")
+            .short("l")
+            .takes_value(true)
+            .required(false))
         .arg(Arg::with_name("FILE")
             .help("Sets the input file(s) to use")
             .required(false)
@@ -37,8 +43,25 @@ fn main() {
             .index(1))
         .get_matches();
 
-    let is_strict = matches.is_present("strict");
-    let is_debug = matches.is_present("debug");
+    let level: Option<u16> = match matches.value_of("level") {
+        Some(level_string) => {
+            match LogLevel::parse(level_string) {
+                Ok(level) => Some(level.as_u16()),
+                Err(e) => {
+                    eprintln!("{}: {}", e, level_string);
+                    std::process::exit(1);
+                }
+            }
+        }
+        None => None
+    };
+
+    let output_config = LoggerOutputConfig {
+        indent: 4,
+        is_strict: matches.is_present("strict"),
+        is_debug: matches.is_present("debug"),
+        level
+    };
 
     match matches.values_of("FILE") {
         Some(filenames) => {
@@ -62,15 +85,13 @@ fn main() {
                 };
 
                 bunyan_view::write_bunyan_output(&mut std::io::stdout(), reader,
-                                                 &LogFormat::Long, is_strict, is_debug,
-                                                 Some(4));
+                                                 &LogFormat::Long, output_config.clone());
             }
         },
         None => {
             let reader = Box::new(BufReader::new(std::io::stdin()));
             bunyan_view::write_bunyan_output(&mut std::io::stdout(), reader,
-                                             &LogFormat::Long, is_strict, is_debug,
-                                             Some(4));
+                                             &LogFormat::Long, output_config);
         }
     }
 }

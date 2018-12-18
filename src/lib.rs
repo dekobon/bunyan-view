@@ -10,8 +10,9 @@ mod macros;
 mod long_format_logger;
 
 use std::error::Error;
-use std::fmt::{Display, Formatter};
 use std::io::{BufRead, Write};
+
+use std::fmt;
 
 use serde_json::Value;
 use serde_json::map::Map as Map;
@@ -42,16 +43,46 @@ impl LogLevel {
         }
     }
 
-    #[inline]
-    pub fn as_str(&self) -> &str {
+    pub fn as_string(&self) -> String {
         match *self {
-            LogLevel::TRACE        => "TRACE",
-            LogLevel::DEBUG        => "DEBUG",
-            LogLevel::INFO         => "INFO",
-            LogLevel::WARN         => "WARN",
-            LogLevel::ERROR        => "ERROR",
-            LogLevel::FATAL        => "FATAL",
-            LogLevel::OTHER(_code) => "LVL"
+            LogLevel::TRACE        => "TRACE".to_string(),
+            LogLevel::DEBUG        => "DEBUG".to_string(),
+            LogLevel::INFO         => "INFO".to_string(),
+            LogLevel::WARN         => "WARN".to_string(),
+            LogLevel::ERROR        => "ERROR".to_string(),
+            LogLevel::FATAL        => "FATAL".to_string(),
+            LogLevel::OTHER(_code)  => {
+                format!("LVL{}", self.as_u16())
+            }
+        }
+    }
+
+    pub fn parse<S: Into<String>>(level: S) -> Result<LogLevel, LogLevelParseError> {
+        let level_string: String = level.into();
+
+        if level_string.eq_ignore_ascii_case("TRACE") {
+            Ok(LogLevel::TRACE)
+        } else if level_string.eq_ignore_ascii_case("DEBUG") {
+            Ok(LogLevel::DEBUG)
+        } else if level_string.eq_ignore_ascii_case("INFO") {
+            Ok(LogLevel::INFO)
+        } else if level_string.eq_ignore_ascii_case("WARN") {
+            Ok(LogLevel::WARN)
+        } else if level_string.eq_ignore_ascii_case("ERROR") {
+            Ok(LogLevel::ERROR)
+        } else if level_string.eq_ignore_ascii_case("FATAL") {
+            Ok(LogLevel::FATAL)
+        } else {
+            let numeric_string = if level_string.to_ascii_uppercase().starts_with("LVL") {
+                &level_string[3..]
+            } else {
+                level_string.as_str()
+            };
+
+            match numeric_string.parse::<u16>() {
+                Ok(code) => Ok(LogLevel::OTHER(code)),
+                Err(_) => Err(LogLevelParseError { input: level_string.to_string() })
+            }
         }
     }
 }
@@ -70,13 +101,9 @@ impl From<u16> for LogLevel {
     }
 }
 
-impl Display for LogLevel {
-    fn fmt(&self, f: &mut Formatter) -> Result<(), std::fmt::Error> {
-        let level = if let LogLevel::OTHER(_) = *self {
-            format!("{}{}", self.as_str(), self.as_u16())
-        } else {
-            self.as_str().to_string()
-        };
+impl fmt::Display for LogLevel {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        let level = self.as_string();
 
         let left_spaces = if level.len() > 5 {
             0
@@ -85,6 +112,27 @@ impl Display for LogLevel {
         };
 
         write!(f, "{:indent$}{}", "", level, indent=left_spaces)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct LogLevelParseError {
+    input: String
+}
+
+impl fmt::Display for LogLevelParseError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Unable to parse log level from input value: {}", self.description())
+    }
+}
+
+impl Error for LogLevelParseError {
+    fn description(&self) -> &str {
+        "Unable to parse log level from input value"
+    }
+
+    fn cause(&self) -> Option<&Error> {
+        None // there is no causing error
     }
 }
 
@@ -131,7 +179,7 @@ pub struct BunyanLine {
 }
 
 pub trait Logger {
-    fn write_long_format<W: Write>(&self, writer : &mut W);
+    fn write_long_format<W: Write>(&self, writer : &mut W, output_config: LoggerOutputConfig);
 }
 
 pub enum LogFormat {
@@ -139,12 +187,12 @@ pub enum LogFormat {
 }
 
 pub trait LogWriter {
-    fn write_log<W: Write>(&self, writer: &mut W, log: BunyanLine, indent: Option<usize>);
+    fn write_log<W: Write>(&self, writer: &mut W, log: BunyanLine, output_config: LoggerOutputConfig);
 }
 
 impl LogWriter for LogFormat {
-    fn write_log<W: Write>(&self, writer: &mut W, log: BunyanLine, indent: Option<usize>) {
-        log.write_long_format(writer)
+    fn write_log<W: Write>(&self, writer: &mut W, log: BunyanLine, output_config: LoggerOutputConfig) {
+        log.write_long_format(writer, output_config)
     }
 }
 
@@ -220,54 +268,110 @@ fn convert_from_raw_serialized_format(raw: RawBunyanLine) -> BunyanLine {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct LoggerOutputConfig {
+    pub indent: usize,
+    pub is_strict: bool,
+    pub is_debug: bool,
+    pub level: Option<u16>
+}
+
 pub fn write_bunyan_output<W, R>(writer: &mut W, reader: R, format: &LogFormat,
-    is_strict: bool, is_debug: bool, indent: Option<usize>)
+                                 output_config: LoggerOutputConfig)
     where W: Write,
-    R: BufRead
+          R: BufRead
 {
     let mut line_no: usize = 0;
 
-    reader.lines().for_each(|raw_line| {
-        match raw_line {
-            Ok(line) => {
-                line_no += 1;
+    reader.lines()
+        .for_each(|raw_line| {
+            match raw_line {
+                Ok(line) => {
+                    line_no += 1;
 
-                // Don't process empty lines because the output isn't useful to our users
-                if !is_strict && line.trim().is_empty() {
-                    wln!(writer);
-                } else {
-                    let json_result: Result<RawBunyanLine, SerdeError> = serde_json::from_str(&line);
-                    match json_result {
-                        Ok(raw) => {
-                            let log = convert_from_raw_serialized_format(raw);
-                            format.write_log(writer, log, indent)
-                        },
-                        Err(e) => {
-                            if !is_strict || is_debug {
-                                let orig_msg = e.to_string().clone();
-                                let mut split = orig_msg.split(" line ");
-
-                                let msg = match split.next() {
-                                    Some(first) => first,
-                                    None => e.description()
+                    // Don't process empty lines because the output isn't useful to our users
+                    if !output_config.is_strict && line.trim().is_empty() {
+                        wln!(writer);
+                    } else {
+                        let json_result: Result<RawBunyanLine, SerdeError> = serde_json::from_str(&line);
+                        match json_result {
+                            Ok(raw) => {
+                                let write_log: bool = if let Some(output_level) = output_config.level {
+                                    output_level <= raw.level
+                                } else {
+                                    true
                                 };
 
-                                if is_debug {
-                                    wln!(std::io::stderr(), "{} line {} column: {}",
-                                             msg, line_no, e.column());
+                                if write_log {
+                                    let log = convert_from_raw_serialized_format(raw);
+                                    format.write_log(writer, log, output_config.clone())
                                 }
+                            },
+                            Err(e) => {
+                                if !output_config.is_strict || output_config.is_debug {
+                                    let orig_msg = e.to_string().clone();
+                                    let mut split = orig_msg.split(" line ");
 
-                                if !is_strict {
-                                    wln!(writer, "{}", line);
+                                    let msg = match split.next() {
+                                        Some(first) => first,
+                                        None => e.description()
+                                    };
+
+                                    if output_config.is_debug {
+                                        wln!(std::io::stderr(), "{} line {} column: {}",
+                                             msg, line_no, e.column());
+                                    }
+
+                                    if !output_config.is_strict {
+                                        wln!(writer, "{}", line);
+                                    }
                                 }
                             }
                         }
                     }
                 }
+                Err(e) => {
+                    panic!(e);
+                }
             }
-            Err(e) => {
-                panic!(e);
+        });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn can_parse_to_known_log_level() {
+        let levels = vec![LogLevel::TRACE, LogLevel::DEBUG, LogLevel::INFO,
+                          LogLevel::ERROR, LogLevel::FATAL];
+        assert_log_levels_parse(levels);
+    }
+
+    #[test]
+    fn can_parse_custom_level_log_level() {
+        let levels = vec![LogLevel::OTHER(0), LogLevel::OTHER(100), LogLevel::OTHER(1001)];
+        assert_log_levels_parse(levels);
+    }
+
+    fn assert_log_levels_parse(levels: Vec<LogLevel>) {
+        for test_level in levels {
+            let level_string = test_level.as_string();
+            let lower_case_level_string = level_string.to_ascii_lowercase();
+
+            println!("{}", level_string);
+
+            // test parsing uppercase
+            match LogLevel::parse(level_string) {
+                Ok(level) => assert_eq!(level, test_level, "Unable to parse input to log level"),
+                Err(err) => panic!(err)
+            }
+
+            // test parsing lowercase
+            match LogLevel::parse(lower_case_level_string) {
+                Ok(level) => assert_eq!(level, test_level, "Unable to parse input to log level"),
+                Err(err) => panic!(err)
             }
         }
-    });
+    }
 }

@@ -1,4 +1,4 @@
-use crate::{BunyanLine, Logger, LogLevel};
+use crate::{BunyanLine, Logger, LogLevel, LoggerOutputConfig};
 
 use std::io::Write;
 use std::iter::Iterator;
@@ -570,7 +570,7 @@ fn write_err<W: Write>(writer : &mut W, err_map: &Map<String, Value>) -> usize {
 }
 
 impl Logger for BunyanLine {
-    fn write_long_format<W: Write>(&self, writer : &mut W) {
+    fn write_long_format<W: Write>(&self, writer : &mut W, output_config: LoggerOutputConfig) {
         let log_level: LogLevel = self.level.into();
         w!(writer, "[{}] {}: {}/",
                self.time, log_level, self.name);
