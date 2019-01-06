@@ -1,264 +1,608 @@
-use crate::{BunyanLine, Logger, LogLevel};
+use crate::{BunyanLine, Logger, LogLevel, LoggerOutputConfig};
+use crate::errors::{BunyanLogParseError, ParseResult};
+use crate::divider_writer::DividerWriter;
+use crate::BASE_INDENT_SIZE;
 
 use std::io::Write;
-use std::iter::Iterator;
 
 use httpstatus::StatusCode;
 
 use serde_json::Value;
 use serde_json::map::Map as Map;
 
-use itertools::multipeek;
-
-const BASE_INDENT_SIZE: usize = 4;
+/// Maximum characters for a string value in the extra parameters section
 const LONG_LINE_SIZE: usize = 50;
-const DIVIDER: &str = "--";
-const REQ_EXTRA: [&str; 7] = ["method", "url", "httpVersion", "body", "header", "headers", "trailers"];
-const CLIENT_REQ_EXTRA: [&str; 7] = ["method", "url", "httpVersion", "body", "header", "address", "port"];
-const RES_EXTRA: [&str; 4] = ["statusCode", "header", "headers", "trailer"];
-const CLIENT_RES_EXTRA: [&str; 5] = ["statusCode", "body", "header", "headers", "trailer"];
-const ERR_EXTRA: [&str; 3] = ["message", "name", "stack"];
+/// Reserved keywords for requests records
+const REQ_RESERVED: [&str; 6] = ["method", "url", "httpVersion", "body", "headers", "trailers"];
+/// Reserved keywords for client requests records
+const CLIENT_REQ_RESERVED: [&str; 8] = ["method", "url", "httpVersion", "body", "headers", "trailers", "address", "port"];
+/// Reserved keywords for responses records
+const RES_RESERVED: [&str; 6] = ["statusCode", "header", "headers", "trailer", "body", "trailer"];
+/// Reserved keywords for client responses records
+const CLIENT_RES_RESERVED: [&str; 5] = ["statusCode", "body", "header", "headers", "trailer"];
+/// Reserved keywords for error records
+const ERR_RESERVED: [&str; 3] = ["message", "name", "stack"];
+/// Reserved keywords for the `other` map in `BunyanLine`
+const GENERAL_RESERVED: [&str; 5] = ["req", "client_req", "res", "client_res", "err"];
+/// Default assumed HTTP version
+const DEFAULT_HTTP_VERSION: &str = "1.1";
 
-/// Returns true if the given JSON value is a JSON string and it has a newline character or it is
-/// longer than the LONG_LINE_SIZE (50 characterS).
+/// Writes the src information of the log line if it is present.
 ///
 /// # Arguments
 ///
-/// * `json_value` - a JSON value of unknown type
-fn is_multiline_string(json_value: &Value) -> bool {
-    match json_value {
-        Value::String(string) => {
-            string.contains('\n') || string.len() > LONG_LINE_SIZE
-        },
-        _ => false
+/// * `writer` - Write implementation to output data to
+/// * `other` - Mutable map containing JSON optional JSON data. Keys will be removed as processed.
+///
+/// # Errors
+///
+/// This function will return None if no errors have been encountered. In the case of parsing logic
+/// errors where the JSON data is not in the expected format, it will return a
+/// `Option<BunyanLogParseError>`.
+///
+fn write_src<W: Write>(writer: &mut W, other: &mut Map<String, Value>) -> Option<BunyanLogParseError> {
+    if let Some(ref src) = other.remove("src") {
+        match src {
+            Value::Object(src_map) => {
+                // We only display the src information if [src.file] is present
+                if let Some(ref file) = src_map.get("file") {
+                    w!(writer, " ({}", string_or_value!(file));
+
+
+                    if let Some(ref line) = src_map.get("line") {
+                        w!(writer, ":{}", string_or_value!(line));
+                    }
+
+                    if let Some(ref func) = src_map.get("func") {
+                        w!(writer, " in {}", string_or_value!(func));
+                    }
+
+                    w!(writer, ")");
+                }
+            },
+            Value::String(src_str) => {
+                w!(writer, " ({})", src_str);
+            },
+            _ => ()
+        }
     }
+
+    None
 }
 
-/// Returns true if the given JSON value is a JSON object and it is not empty.
+/// Writes all of the extra parameters to the top line of output by iterating through the `others`
+/// map provided.
 ///
 /// # Arguments
+/// * `writer` - Write implementation to output data to
+/// * `other` - Map containing all non-explicitly deserialized keys and values
+/// * `details` - Mutable vector containing strings to be written as output later
 ///
-/// * `json_value` - a JSON value of unknown type
-fn is_object_with_keys(json_value: &Value) -> bool {
-    if !json_value.is_object() {
-        return false;
+/// # Errors
+/// This function will return None if no errors have been encountered. In the case of parsing logic
+/// errors where the JSON data is not in the expected format, it will return a
+/// `Option<BunyanLogParseError>`.
+///
+fn write_all_extra_params<W: Write>(writer: &mut W, other: &mut Map<String, Value>,
+                                    details: &mut Vec<String>) -> Option<BunyanLogParseError> {
+    /// Returns the passed value as a pretty printed JSON string with indents.
+    ///
+    /// # Arguments
+    /// * `key` - Key associated with value being processed
+    /// * `value` - Value to be converted to a pretty printed string
+    /// * `caller_name` - Optional name of top-level record (eg `req`, `res`, `err`, etc)
+    ///
+    fn detail_pretty_print(key: &str, value: &Value, caller_name: Option<&str>) -> String {
+        let pretty = ::serde_json::to_string_pretty(value)
+            .unwrap_or("[malformed]".to_string());
+
+        match caller_name {
+            Some(caller) => format!("{}.{}: {}", caller, key, pretty),
+            None => format!("{}: {}", key, pretty)
+        }
     }
 
-    match json_value.as_object() {
-        Some(map) => !map.is_empty(),
-        None => true
+    /// Returns true if the given JSON value is a JSON string and it has a newline character or it is
+    /// longer than the LONG_LINE_SIZE (50 characterS).
+    ///
+    /// # Arguments
+    ///
+    /// * `text` - string to test to see if it qualifies for multiline output
+    fn is_multiline_string(text: &String) -> bool {
+        text.contains('\n') || text.len() > LONG_LINE_SIZE
     }
-}
 
-/// Returns true if the given JSON value is not a JSON object and or it is an empty JSON object.
-///
-/// # Arguments
-///
-/// * `json_value` - a JSON value of unknown type
-fn is_empty_object(json_value: &Value) -> bool {
-    !is_object_with_keys(json_value)
-}
-
-fn write_string_value_params<W: Write>(writer : &mut W, line: &BunyanLine) {
-    let other_params = line.other.iter()
-        .filter(|&(_, v)| {
-            !is_multiline_string(v) && !v.is_array() && is_empty_object(v)
-        });
-    let mut params = multipeek(other_params);
-
-    let optional_req_id: Option<String> = match line.req_id {
-        Some(ref req_id) => {
-            match req_id {
-                Value::String(req_id_string) => Some(req_id_string.clone()),
-                Value::Number(req_id_number) => Some(format!("{}", req_id_number)),
-                _ => None
+    /// Returns the passed value as a string optionally with enclosing quotes. If
+    /// the conversion to a string of the value yields a string with spaces, then
+    /// the returned string will be enclosed with double quotes.
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - a serde JSON value object to convert to a String
+    fn quoteify(value: &Value) -> String {
+        if let Some(text) = value.as_str() {
+            if text.contains(' ') {
+                return value.to_string();
             }
-        },
-        None => None
-    };
+        }
 
-    let has_any_params = params.peek().is_some() || optional_req_id.is_some();
-    let mut is_first : bool = true;
-
-    if let Some(ref req_id) = optional_req_id {
-        is_first = false;
-        w!(writer, " (req_id={}", req_id);
+        string_or_value!(value)
     }
 
-    for (k, v) in params {
-        if is_first {
+    /// Returns an optional string representing the string presentation of an extra parameter. When
+    /// a `None` value is returned, the value has been added to the `details` vector.
+    ///
+    /// # Arguments
+    /// * `key` - Key associated with value being processed
+    /// * `value` - Value to be converted to a pretty printed string
+    /// * `caller_name` - Optional name of top-level record (eg `req`, `res`, `err`, etc)
+    /// * `details` - Mutable vector containing strings to be written as output later
+    fn stringify(key: &str, value: &Value, caller_name: Option<&str>, details: &mut Vec<String>) -> Option<String> {
+        match value {
+            Value::String(text) => {
+                // Add long strings to details
+                if is_multiline_string(text) {
+                    let detail = match caller_name {
+                        Some(caller) => format!("{}.{}: {}", caller, key, text),
+                        None => format!("{}: {}", key, text)
+                    };
+
+                    details.push(detail);
+
+                    None
+                // Wrap strings with spaces in quotation marks
+                } else {
+                    Some(quoteify(value))
+                }
+            },
+            Value::Number(_) => Some(string_or_value!(value)),
+            Value::Bool(_) => Some(string_or_value!(value)),
+            Value::Null => Some(string_or_value!(value)),
+            Value::Object(map) => {
+                if map.is_empty() {
+                    Some("{}".to_string())
+                } else {
+                    details.push(detail_pretty_print(key, value, caller_name));
+                    None
+                }
+            },
+            Value::Array(array) => {
+                if array.is_empty() {
+                    Some("[]".to_string())
+                } else {
+                    details.push(detail_pretty_print(key, value, caller_name));
+                    None
+                }
+            }
+        }
+    }
+
+    /// Writes the loading open parentheses if `if_first` is true. Otherwise, if
+    /// `is_first` is false, then it writes a leading command and space.
+    ///
+    /// # Arguments
+    ///
+    /// * `writer` - Write implementation to output data to
+    /// * `is_first` - Mutable boolean indicating if the first parameter has been processed
+    fn write_formatting<W: Write>(writer: &mut W, is_first: &mut bool) {
+        if *is_first {
             w!(writer, " (");
-            is_first = false;
+            *is_first = false;
         } else {
             w!(writer, ", ");
         }
-
-        if let Some(param_val) = v.as_str() {
-            if param_val.contains(' ') {
-                w!(writer, "{}=\"{}\"", k, param_val);
-            } else {
-                w!(writer, "{}={}", k, param_val);
-            }
-        } else {
-            w!(writer, "{}={}", k, v);
-        }
     }
 
-    let had_req_params = write_req_res_string_value_params(
-        writer, &line.req, "req", &mut is_first,
-        &|k: &str | REQ_EXTRA.contains(&k));
-    let had_client_req_params = write_req_res_string_value_params(
-        writer, &line.client_req, "client_req", &mut is_first,
-        &|k: &str | CLIENT_REQ_EXTRA.contains(&k));
-    let had_res_params = write_req_res_string_value_params(
-        writer, &line.res, "res",
-        &mut is_first, &|k: &str | RES_EXTRA.contains(&k));
-    let had_client_res_params = write_req_res_string_value_params(
-        writer, &line.client_res, "client_res", &mut is_first,
-        &|k: &str | CLIENT_RES_EXTRA.contains(&k));
-    let had_err_params = write_req_res_string_value_params(
-        writer, &line.err, "err", &mut is_first,
-        &|k: &str | ERR_EXTRA.contains(&k));
+    /// Writes the extra parameters for the passed `optional_node` value if not `None`.
+    ///
+    /// # Arguments
+    /// * `writer` - Write implementation to output data to
+    /// * `caller_name` - Optional name of top-level record (eg `req`, `res`, `err`, etc)
+    /// * `is_first` - Mutable boolean indicating if the first parameter has been processed
+    /// * `optional_node` - Optional Json object represented as `Value` containing parameters to be processed
+    /// * `details` - Mutable vector containing strings to be written as output later
+    /// * `exclude` - Closure in which when evaluated is true will exclude a given parameter
+    ///
+    fn write_params_for_object<W: Write>(writer: &mut W, caller_name: Option<&str>, is_first: &mut bool,
+                                         optional_node: Option<&Value>, details: &mut Vec<String>,
+                                         exclude: &Fn(&str) -> bool) -> Option<BunyanLogParseError> {
+        if optional_node.is_none() {
+            return None;
+        }
 
-    if has_any_params || had_req_params || had_client_req_params || had_res_params
-        || had_client_res_params || had_err_params {
+        let node = optional_node?;
+
+        // Display strings, numbers and null values, as-is
+        if node.is_string() || node.is_number() || node.is_null() {
+            write_formatting(writer, is_first);
+            w!(writer, "{}={}", caller_name?, quoteify(node));
+            return None;
+        }
+
+        if caller_name.is_some() && node.is_array() {
+            let value = stringify(caller_name?, node, None, details);
+            if let Some(value_text) = value {
+                write_formatting(writer, is_first);
+                w!(writer, "{}={}\n", caller_name?, value_text);
+            }
+        }
+
+        let map = node.as_object()?;
+
+        for (k, v) in map.iter() {
+            if exclude(&k.as_str()) {
+                continue;
+            }
+
+            let value: Option<String> = stringify(k, v,
+                                                  caller_name, details);
+
+            if let Some(value_text) = value {
+                write_formatting(writer, is_first);
+
+                match caller_name {
+                    Some(caller) => w!(writer, "{}.{}={}", caller, k, value_text),
+                    None => w!(writer, "{}={}", k, value_text)
+                }
+            }
+        }
+
+        None
+    }
+
+    let mut is_first : bool = true;
+
+    // REQUEST ID [req_id] - special case we always write this first for visibility
+    if let Some(req_id) = other.remove("req_id") {
+        write_formatting(writer, &mut is_first);
+        w!(writer, "req_id={}", string_or_value!(req_id));
+    }
+
+    /* Note: based on logic in write_params_for_object, parameters that do not fit
+       properly within the extra parameters section, will be added to the details
+       vector. */
+
+    // Write out all keys and values that is are in GENERAL_RESERVED.
+    let other_value = ::serde_json::to_value(&other).unwrap();
+    if let Some(err) = write_params_for_object(writer, None, &mut is_first,
+                                               Some(&other_value), details,
+                                               &|k: &str | { GENERAL_RESERVED.contains(&k) }) {
+        return Some(err);
+    };
+
+    /* Below, we write out the parameters of all JSON keys that are present in
+       GENERAL_RESERVED in order to output any of the contents that need to be
+       present in the extra parameters section of the logs. */
+
+    // REQUEST [rec]
+    if let Some(err) = write_params_for_object(writer, Some("req"), &mut is_first,
+                                               other.get("req"), details,
+                                               &|k: &str | REQ_RESERVED.contains(&k)) {
+        return Some(err);
+    }
+
+    // CLIENT REQUEST [client_req]
+    if let Some(err) = write_params_for_object(writer, Some("client_req"), &mut is_first,
+                                               other.get("client_req"), details,
+                                               &|k: &str | CLIENT_REQ_RESERVED.contains(&k)) {
+        return Some(err);
+    }
+
+    // RESPONSE [res]
+    if let Some(err) = write_params_for_object(writer, Some("res"), &mut is_first,
+                                               other.get("res"), details,
+                                               &|k: &str | RES_RESERVED.contains(&k)) {
+        return Some(err);
+    }
+
+    // CLIENT RESPONSE [client_res]
+    if let Some(err) = write_params_for_object(writer, Some("client_res"), &mut is_first,
+                                               other.get("client_res"), details,
+                                               &|k: &str | CLIENT_RES_RESERVED.contains(&k)) {
+        return Some(err);
+    }
+
+    // ERROR INFORMATION [err]
+    if let Some(err_record) = other.get("err") {
+        /* Support boolean, null and object types for the [err] record to maintain parity with
+           node bunyan */
+
+        if let Some(err) = write_params_for_object(writer, Some("err"), &mut is_first,
+                                                          Some(err_record), details,
+                                                          &|k: &str | ERR_RESERVED.contains(&k)) {
+            return Some(err);
+        };
+    }
+
+    if !is_first {
         w!(writer, ")");
     }
+
+    None
 }
 
-fn write_req_res_string_value_params<W: Write>(writer: &mut W,
-                                               optional_params: &Option<Map<String, Value>>,
-                                               param_name: &str,
-                                               is_first: &mut bool,
-                                               is_extra_fn: &Fn(&str) -> bool) -> bool {
-    fn extra_item_filter(k: &str, v: &Value) -> bool {
-        k != "trailer" && (v.is_null() || v.is_boolean())
-    }
+fn write_req<W: Write>(writer: &mut W, lines_written: &mut usize, key: &str,
+                       other: &mut Map<String, Value>) -> Option<BunyanLogParseError> {
+    /// Writes the method, url and HTTP version associated with a request.
+    ///
+    /// # Arguments
+    ///
+    /// * `writer` - Write implementation to output data to
+    /// * `lines_written` - reference to a counter of number of lines written
+    /// * `caller_name` - text indicating if we have been invoked from a "req" or "client_req" code path
+    /// * `req_map` - Mutable map request data. Keys will be removed as processed.
+    ///
+    /// # Errors
+    ///
+    /// This function will return None if no errors have been encountered. In the case of parsing logic
+    /// errors where the JSON data is not in the expected format, it will return a
+    /// `Option<BunyanLogParseError>`.
+    ///
+    fn write_req_summary<W: Write>(writer: &mut W, lines_written: &mut usize, caller_name: &str,
+                                   req_map: &mut Map<String, Value>) -> Option<BunyanLogParseError> {
+        w!(writer, "{:indent$}", "", indent = BASE_INDENT_SIZE);
 
-    match optional_params {
-        Some(ref params) => {
-            let mut items = multipeek(params.iter()
-                .filter(|&(k, v)| {
-                    (!is_object_with_keys(v) && !is_extra_fn(k))
-                        || (is_extra_fn(k) && extra_item_filter(k,v))
-                })
-                .map(|t: (&String, &Value)| (format!("{}.{}", param_name, t.0), t.1)));
-
-            if items.peek().is_some() {
-                for (k, v) in items {
-                    if *is_first {
-                        w!(writer, " (");
-                        *is_first = false;
-                    } else {
-                        w!(writer, ", ");
-                    }
-
-                    let param_val = string_or_value!(v);
-
-                    let display_key = if k == [param_name, ".raw_body"].concat() {
-                        param_name
-                    } else {
-                        k.as_str()
-                    };
-
-                    if param_val.contains(' ') {
-                        w!(writer, "{}=\"{}\"", display_key, param_val);
-                    } else {
-                        w!(writer, "{}={}", display_key, param_val);
-                    }
-                }
-
-                true
+        if let Some(method) = req_map.remove("method") {
+            if let Some(method_str) = method.as_str() {
+                w!(writer, "{} ", method_str);
             } else {
-                false
+                return Some(BunyanLogParseError::new(format!("[{}.method] is not a JSON string", caller_name)));
             }
-        },
-        None => false
-    }
-}
-
-fn write_multiline_string_value_params<W: Write>(writer: &mut W, line: &BunyanLine) -> usize {
-    let params = line.other.iter()
-        .filter(|&(_, v)| is_multiline_string(v))
-        .map(|(k, v)| (k, v.as_str().unwrap_or("undefined")));
-
-    let mut lines_written: usize = 0;
-
-    for (k, v) in params {
-        let mut is_first = true;
-
-        for line in v.lines() {
-            if is_first {
-                wln!(writer, "{:indent$}{}: {}", "", k, line, indent=BASE_INDENT_SIZE);
-                is_first = false;
-            } else {
-                wln!(writer, "{:indent$}{}", "", line, indent=BASE_INDENT_SIZE);
-            }
-            lines_written += 1;
+        } else {
+            return Some(BunyanLogParseError::new(format!("[{}.method] is not present", caller_name)));
         }
+
+        if let Some(method) = req_map.remove("url") {
+            if let Some(method_str) = method.as_str() {
+                w!(writer, "{} ", method_str);
+            } else {
+                return Some(BunyanLogParseError::new(format!("[{}.url] is not a JSON string", caller_name)));
+            }
+        } else {
+            return Some(BunyanLogParseError::new(format!("[{}.url] is not present", caller_name)));
+        }
+
+        if let Some(http_version) = req_map.remove("httpVersion") {
+            if let Some(http_version_str) = http_version.as_str() {
+                w!(writer, "HTTP/{}", http_version_str);
+            } else {
+                return Some(BunyanLogParseError::new(format!("[{}.httpVersion] is not a JSON string", caller_name)));
+            }
+        } else {
+            // we default to 1.1 if value is not present because that's what node bunyan does
+            w!(writer, "HTTP/{}", DEFAULT_HTTP_VERSION);
+        }
+
+        wln!(writer);
+        *lines_written += 1;
+
+        None
     }
 
-    lines_written
-}
+    if let Some(mut req) = other.remove(key) {
+        if !req.is_object() {
+            return None;
+        }
 
-fn write_req<W: Write>(writer: &mut W, optional_req: &Option<Map<String, Value>>) -> usize {
-    let mut lines_written: usize = 0;
+        let req_map = req.as_object_mut()?;
 
-    lines_written += write_req_summary(writer, optional_req);
-    lines_written += write_req_details(writer, optional_req);
+        // METHOD, URL, HTTP VERSION
+        // If we can't parse a method, URL or Http Version from the request, output in JSON as is
+        if write_req_summary(writer, lines_written, key, req_map).is_some() {
+            wln!(writer, "undefined undefined HTTP/1.1");
+            return None;
+        }
 
-    lines_written
-}
+        // CONNECTING HOST FOR CLIENT REQUEST
+        if key.eq("client_req") {
+            if let Some(address_val) = req_map.remove("address") {
+                let address = string_or_value!(address_val);
 
-fn write_client_req<W: Write>(writer: &mut W, optional_req: &Option<Map<String, Value>>) -> usize {
-    let mut lines_written: usize = 0;
+                w!(writer, "{:indent$}Connecting Host: {}", "", address, indent = BASE_INDENT_SIZE);
 
-    if let Some(client_req) = optional_req {
-        lines_written += write_req_summary(writer, optional_req);
-
-        if let Some(address_val) = client_req.get("address") {
-            if address_val.is_string() {
-                w!(writer, "{:indent$}Host: {}", "", string_or_value!(address_val), indent = BASE_INDENT_SIZE);
-
-                if let Some(port_val) = client_req.get("port") {
-                    if port_val.is_string() || port_val.is_number() {
-                        w!(writer, ":{}", string_or_value!(port_val));
-                    }
+                if let Some(port_val) = req_map.remove("port") {
+                    w!(writer, ":{}", string_or_value!(port_val));
                 }
 
                 wln!(writer);
-                lines_written += 1;
+                *lines_written += 1;
             }
         }
 
-        lines_written += write_req_details(writer, optional_req);
+        // HTTP HEADERS
+        if let Some(headers) = req_map.remove("headers") {
+            if let Some(err) = write_headers(writer, lines_written, format!("{}.headers", key).as_str(),
+                                             &headers) {
+                return Some(err);
+            }
+        }
+
+        // HTTP BODY
+        if let Some(body) = req_map.remove("body") {
+            if let Some(body_map) = body.as_object() {
+                let pretty = ::serde_json::to_string_pretty(&body_map).unwrap_or("[malformed]".to_string());
+                for line in pretty.lines() {
+                    wln!(writer, "{:indent$}{}", "", line, indent = BASE_INDENT_SIZE);
+                    *lines_written += 1;
+                }
+            } else {
+                let body_string = string_or_value!(body);
+                wln!(writer, "{:indent$}{}", "", body_string, indent = BASE_INDENT_SIZE);
+                *lines_written += 1;
+            }
+        }
+
+        // HTTP TRAILER HEADERS
+        if let Some(trailers) = req_map.remove("trailers") {
+            if let Some(err) = write_headers(writer, lines_written, format!("{}.trailers", key).as_str(),
+                                             &trailers) {
+                return Some(err);
+            }
+        }
     }
 
-    lines_written
+    None
 }
 
-fn write_req_summary<W: Write>(writer: &mut W, optional_req: &Option<Map<String, Value>>) -> usize {
-    let mut lines_written: usize = 0;
+fn write_res<W: Write>(writer: &mut W, lines_written: &mut usize, key: &str,
+                       other: &mut Map<String, Value>) -> Option<BunyanLogParseError> {
+    /// Searches the passed map for the key `headers` and then `header` returning whichever
+    /// is found first and is a valid string or JSON object. Otherwise, `None` is returned.
+    fn find_headers(map: &mut Map<String, Value>) -> Option<Value> {
+        if let Some(headers) = map.remove("headers") {
+            if headers.is_string() || headers.is_object() {
+                return Some(headers);
+            }
+        }
 
-    if let Some(ref req_map) = optional_req {
-        w!(writer, "{:indent$}", "", indent = BASE_INDENT_SIZE);
+        if let Some(headers) = map.remove("header") {
+            if headers.is_string() || headers.is_object() {
+                return Some(headers);
+            }
+        }
 
-        w!(writer, "{} ", get_or_default!(req_map, "method", "undefined"));
-        w!(writer, "{} ", get_or_default!(req_map, "url", "undefined"));
-        w!(writer, "HTTP/{}", get_or_default!(req_map, "httpVersion", "1.1"));
-        wln!(writer);
-        lines_written += 1;
+        None
     }
 
-    lines_written
+    // TODO: change to Result
+    fn json_string_or_number_as_u16(val: Value) -> Option<u16> {
+        match val {
+            Value::Number(number) => {
+                if let Some(code) = number.as_u64() {
+                    if code > u64::from(std::u16::MAX) {
+                        None
+                    } else {
+                        Some(code as u16)
+                    }
+                } else {
+                    None
+                }
+            },
+            Value::String(string) => {
+                let code = string.parse::<u16>();
+                match code {
+                    Ok(val) => Some(val),
+                    Err(_e) => None
+                }
+            },
+            _ => None
+        }
+    }
+
+    fn write_res_status_code<W: Write>(writer: &mut W, lines_written: &mut usize,
+                                       optional_code: Option<Value>,
+                                       option_http_version: Option<&str>) {
+        let numeric_status_code = match optional_code {
+            Some(json_value) => json_string_or_number_as_u16(json_value),
+            None => { None }
+        };
+
+        if let Some(code) = numeric_status_code {
+            let http_version = option_http_version.unwrap_or(DEFAULT_HTTP_VERSION);
+            w!(writer, "{:indent$}HTTP/{}", "", http_version, indent = BASE_INDENT_SIZE);
+
+            let status_code = StatusCode::from(code);
+            w!(writer, " {} {}", code, status_code.reason_phrase());
+            wln!(writer);
+            *lines_written += 1;
+        }
+    }
+
+    let res_option = other.remove(key);
+
+    // If there is no res key, then just exit right away because there is nothing to do
+    if res_option.is_none() {
+        return None;
+    }
+
+    let mut res = res_option.unwrap();
+
+    if !res.is_object() {
+        return None;
+    }
+
+    let res_map = res.as_object_mut()?;
+
+    // HEADERS
+    if let Some(ref headers) = find_headers(res_map) {
+        match headers {
+            Value::String(headers_str) => {
+                let http_version = if headers_str.starts_with("HTTP/") {
+                    Some(&headers_str[5..8])
+                } else {
+                    None
+                };
+
+                write_res_status_code(writer, lines_written,
+                                      res_map.remove("statusCode"), http_version);
+
+                let lines = headers_str.lines();
+
+                for line in lines {
+                    if line.is_empty() { continue; }
+                    wln!(writer, "{:indent$}{}", "", line, indent = BASE_INDENT_SIZE);
+                    *lines_written += 1;
+                }
+            },
+            Value::Object(_) => {
+                write_res_status_code(writer, lines_written,
+                                      res_map.remove("statusCode"), None);
+                write_headers(writer, lines_written, format!("{}.headers", key).as_str(),
+                              headers);
+            },
+            _ => ()
+        }
+    // Attempt to write out the status code line, even if we don't have headers
+    } else {
+        write_res_status_code(writer, lines_written,
+                              res_map.remove("statusCode"), None);
+    }
+
+    // BODY
+    if let Some(body_val) = res_map.remove("body") {
+        let body = string_or_value!(body_val);
+
+        if !body.is_empty() {
+            wln!(writer);
+            *lines_written += 1;
+            for line in body.lines() {
+                wln!(writer, "{:indent$}{}", "", line, indent = BASE_INDENT_SIZE);
+                *lines_written += 1;
+            }
+        }
+    }
+
+    None
 }
 
-fn write_req_details<W: Write>(writer: &mut W, optional_req: &Option<Map<String, Value>>) -> usize {
-    fn write_keys_and_vals<W: Write>(writer: &mut W, val: &Value) -> usize{
-        let mut lines_written: usize = 0;
+/// Writes the contents of `headers` or `header` in the passed map.
+///
+/// # Arguments
+///
+/// * `writer` - Write implementation to output data to
+/// * `lines_written` - reference to a counter of number of lines written
+/// * `caller_name` - text indicating if we have been invoked from a "req" or "client_req" code path
+/// * `headers` - Mutable map containing header(s) keys. Keys will be removed as processed.
+///
+/// # Errors
+///
+/// This function will return None if no errors have been encountered. In the case of parsing logic
+/// errors where the JSON data is not in the expected format, it will return a
+/// `Option<BunyanLogParseError>`.
+///
+fn write_headers<W: Write>(writer: &mut W, lines_written: &mut usize, caller_name: &str,
+                           headers: &Value) -> Option<BunyanLogParseError> {
+    match headers {
+        Value::String(headers_string) => {
+            for line in headers_string.lines() {
+                if line.trim().is_empty() { continue; }
 
-        if let Some(ref tuples) = val.as_object() {
-            for (k, v) in tuples.iter() {
+                wln!(writer, "{:indent$}{}", "", line, indent = BASE_INDENT_SIZE);
+                *lines_written += 1;
+            }
+        },
+        Value::Object(headers_map) => {
+            for (k, v) in headers_map.iter() {
                 w!(writer, "{:indent$}{}:", "", k, indent = BASE_INDENT_SIZE);
 
                 let mut is_first = true;
@@ -268,428 +612,282 @@ fn write_req_details<W: Write>(writer: &mut W, optional_req: &Option<Map<String,
                         wln!(writer, " {}", line);
                         is_first = false;
                     } else {
-                        wln!(writer, "{:indent$}{}", "", line,
-                                     indent = BASE_INDENT_SIZE);
-                    }
-                    lines_written += 1;
-                }
-            }
-        } else if let Some(ref string_val) = val.as_str() {
-            for line in string_val.lines() {
-                if line.trim().is_empty() { continue; }
-
-                wln!(writer, "{:indent$}{}", "", line, indent = BASE_INDENT_SIZE);
-                lines_written += 1;
-            }
-        }
-
-        lines_written
-    }
-
-    let mut lines_written: usize = 0;
-
-    if let Some(ref req_map) = optional_req {
-        if let Some(ref header_val) = req_map.get("header") {
-            lines_written += write_keys_and_vals(writer, &header_val);
-        }
-
-        if let Some(ref headers_val) = req_map.get("headers") {
-            lines_written += write_keys_and_vals(writer, &headers_val);
-        }
-
-        if let Some(ref body) = req_map.get("body") {
-            wln!(writer, "{:indent$}{}", "", string_or_value!(body),
-                         indent = BASE_INDENT_SIZE);
-            lines_written += 1;
-        }
-
-        if let Some(ref trailer_val) = req_map.get("trailers") {
-            lines_written += write_keys_and_vals(writer, &trailer_val);
-        }
-    }
-
-    lines_written
-}
-
-fn write_res<W: Write>(writer: &mut W, optional_res: &Option<Map<String, Value>>) -> usize {
-    let mut lines_written: usize = 0;
-
-    if let Some(ref res_map) = optional_res {
-        // Unfortunately, we have to match "header" or "headers" to find the headers. If
-        // both exist, we throw away the value of "headers" because that's what node-bunyan
-        // does.
-        let optional_headers: Option<&Value> = match res_map.get("header") {
-            Some(header) => Some(header),
-            _ => res_map.get("headers")
-        };
-
-        if let Some(ref headers) = optional_headers {
-            if headers.is_string() {
-                let headers_str = headers.as_str().unwrap_or("undefined");
-
-                let http_version = if headers_str.starts_with("HTTP/") {
-                    Some(&headers_str[5..8])
-                } else {
-                    None
-                };
-
-                lines_written += write_res_status_code(writer, res_map.get("statusCode"),
-                                                       http_version);
-
-                let lines = headers_str.lines();
-
-                for line in lines {
-                    if line.is_empty() { continue; }
-                    wln!(writer, "{:indent$}{}", "", line, indent = BASE_INDENT_SIZE);
-                    lines_written += 1;
-                }
-            } else if headers.is_object() || headers.is_null() {
-                lines_written += write_res_status_code(writer, res_map.get("statusCode"),
-                                                       None);
-                lines_written += write_headers(writer, &headers);
-            }
-        } else {
-            lines_written += write_res_status_code(writer, res_map.get("statusCode"),
-                                                   None);
-        }
-
-        if let Some(body_val) = res_map.get("body") {
-            if body_val.is_string() {
-                let body = string_or_value!(body_val);
-
-                if !body.is_empty() {
-                    wln!(writer);
-                    lines_written += 1;
-                    for line in body.lines() {
                         wln!(writer, "{:indent$}{}", "", line, indent = BASE_INDENT_SIZE);
-                        lines_written += 1;
+                    }
+                    *lines_written += 1;
+                }
+            }
+        }
+        _ => {
+            let msg = format!("[{}] must be a string or a JSON object", caller_name);
+            return Some(BunyanLogParseError::new(msg));
+        }
+    }
+
+    None
+}
+
+fn write_err<W: Write>(writer : &mut W, lines_written: &mut usize,
+                       other: &mut Map<String, Value>) -> Option<BunyanLogParseError> {
+    if let Some(mut err) = other.remove("err") {
+        if !err.is_object() {
+            return None;
+        }
+
+        let err_map = err.as_object_mut()?;
+
+        if let Some(ref stack_val) = err_map.remove("stack") {
+            match stack_val {
+                Value::String(stack_str) => {
+                    for line in stack_str.lines() {
+                        wln!(writer, "{:indent$}{}", "", line, indent = BASE_INDENT_SIZE);
+                        *lines_written += 1;
+                    }
+                },
+                Value::Array(stack_array) => {
+                    for line in stack_array.iter() {
+                        wln!(writer, "{:indent$}{}", "", string_or_value!(line),
+                             indent = BASE_INDENT_SIZE);
+                        *lines_written += 1;
+                    }
+                },
+                _ => {
+                    let pretty = ::serde_json::to_string_pretty(&stack_val).unwrap_or("[malformed]".to_string());
+                    for line in pretty.lines() {
+                        wln!(writer, "{:indent$}{}", "", line, indent = BASE_INDENT_SIZE);
+                        *lines_written += 1;
                     }
                 }
             }
         }
-
-        for (k, v) in res_map {
-            if RES_EXTRA.contains(&k.as_str()) {
-                continue;
-            }
-
-            // Since empty maps are displayed on top in the first line, we skip them
-            if !is_empty_object(v) {
-                w!(writer, "{:indent$}res.{}: ", "", k, indent = BASE_INDENT_SIZE);
-
-                lines_written += write_object(writer, v, BASE_INDENT_SIZE);
-                wln!(writer);
-                lines_written += 1;
-            }
-        }
     }
 
-    lines_written
+    None
 }
 
-fn write_res_status_code<W: Write>(writer: &mut W, optional_code: Option<&Value>,
-                                   option_http_version: Option<&str>) -> usize {
-    let mut lines_written: usize = 0;
-
-    let numeric_status_code = match optional_code {
-        Some(json_value) => json_string_or_number_as_u16(json_value),
-        None => { None }
-    };
-
-    if let Some(code) = numeric_status_code {
-        let http_version = option_http_version.unwrap_or("1.1");
-        w!(writer, "{:indent$}HTTP/{}", "", http_version, indent = BASE_INDENT_SIZE);
-
-        let status_code = StatusCode::from(code);
-        w!(writer, " {} {}", code, status_code.reason_phrase());
-        wln!(writer);
-        lines_written += 1;
-    }
-
-    lines_written
-}
-
-fn json_string_or_number_as_u16(val: &Value) -> Option<u16> {
-    match val {
-        Value::Number(number) => {
-            if let Some(code) = number.as_u64() {
-                if code > u64::from(std::u16::MAX) {
-                    None
-                } else {
-                    Some(code as u16)
-                }
-            } else {
-                None
-            }
-        },
-        Value::String(string) => {
-            let code = string.parse::<u16>();
-            match code {
-                Ok(val) => Some(val),
-                Err(_e) => None
-            }
-        },
-        _ => None
-    }
-}
-
-fn write_headers<W: Write>(writer: &mut W, headers_val: &Value) -> usize {
-    let mut lines_written: usize = 0;
-
-    if let Some(ref headers) = headers_val.as_object() {
-        for (k, v) in headers.iter() {
-            wln!(writer, "{:indent$}{}: {}", "", k, string_or_value!(v),
-                         indent = BASE_INDENT_SIZE);
-            lines_written += 1;
-        }
-    }
-
-    lines_written
-}
-
-fn has_object_value_params(line: &BunyanLine) -> bool {
-    line.other.iter().any(|(_, v)| v.is_object() || v.is_array())
-}
-
-fn write_object_value_params<W: Write>(writer : &mut W, line: &BunyanLine) -> usize {
-    let mut lines_written: usize = 0;
-
-    let params = line.other.iter()
-        .filter(|&(_, v)| is_object_with_keys(v) || v.is_array());
-
-    let mut is_first = true;
-
-    for (k, v) in params {
-        if is_first {
-            is_first = false;
-        } else {
-            wln!(writer, "{:indent$}{}", "", DIVIDER, indent=BASE_INDENT_SIZE);
-            lines_written += 1;
+fn write_details<W: Write>(divider_writer: &mut DividerWriter<W>, lines_written: &mut usize, details: Vec<String>) {
+    for item in details {
+        for line in item.lines() {
+            wln!(divider_writer, "{:indent$}{}", "", line, indent = BASE_INDENT_SIZE);
+            *lines_written += 1;
         }
 
-        w!(writer, "{:indent$}", "", indent=BASE_INDENT_SIZE);
-        w!(writer, "{}: ", k);
-
-        lines_written += write_object(writer, v,  BASE_INDENT_SIZE);
-        wln!(writer);
-        lines_written += 1;
+        if divider_writer.has_been_written {
+            divider_writer.mark_divider_as_unwritten();
+        }
     }
-
-    lines_written
 }
 
-fn write_object<W: Write>(writer : &mut W, val : &Value, indent: usize) -> usize {
-    let mut lines_written: usize = 0;
+fn validate_log_data_structure(line: &BunyanLine) -> Option<BunyanLogParseError> {
+    fn find_headers(map: &Map<String, Value>) -> Option<&Value> {
+        if let Some(headers) = map.get("headers") {
+            if headers.is_string() || headers.is_object() {
+                return Some(headers);
+            }
+        }
 
-    match val {
-        Value::Null => w!(writer, "null"),
-        Value::Bool(boolean) => w!(writer, "{}", boolean),
-        Value::Number(number) => w!(writer, "{}", number),
-        Value::String(_) => w!(writer, "{}", val),
-        Value::Array(array) => {
-            lines_written += write_inner_array(writer, array, indent);
-        },
-        Value::Object(map) => {
-            if map.is_empty() {
-                w!(writer, "{{}}");
-            } else {
-                let new_indent = indent + 2;
-                let len = map.len();
+        if let Some(headers) = map.get("header") {
+            if headers.is_string() || headers.is_object() {
+                return Some(headers);
+            }
+        }
 
-                wln!(writer, "{{");
-                for (pos, (k, v)) in map.iter().enumerate() {
-                    w!(writer, "{:indent$}\"{}\": ", "", k, indent=new_indent);
-                    lines_written += write_object(writer, v, new_indent);
+        None
+    }
 
-                    if pos < len - 1 {
-                        wln!(writer, ",");
-                    } else {
-                        wln!(writer);
+    // Validate src
+    if let Some(ref src) = line.other.get("src") {
+        match src {
+            Value::Object(src_map) => {
+                if let Some(ref file) = src_map.get("file") {
+                    if !file.is_string() {
+                        return Some(BunyanLogParseError::new("[src.file] must be a string"));
                     }
-                    lines_written += 1;
                 }
-
-                w!(writer, "{:indent$}}}", "", indent=indent);
+                if let Some(ref line) = src_map.get("line") {
+                    if !(line.is_string() || line.is_number()) {
+                        return Some(BunyanLogParseError::new("[src.line] must be a number or string"))
+                    }
+                }
+                if let Some(ref func) = src_map.get("func") {
+                    if !func.is_string() {
+                        return Some(BunyanLogParseError::new("[src.func] must be a string"))
+                    }
+                }
+            },
+            Value::String(_) => (),
+            _ => {
+                return Some(BunyanLogParseError::new("[src] value must be a JSON object or string"));
             }
         }
     }
 
-    lines_written
-}
-
-fn write_inner_array<W: Write>(writer : &mut W, array : &[Value], indent: usize) -> usize {
-    let mut lines_written: usize = 0;
-
-    if array.is_empty() {
-        w!(writer, "[]");
-        return lines_written
-    }
-
-    let new_indent = indent + 2;
-    let len = array.len();
-
-    wln!(writer, "[");
-    lines_written += 1;
-
-    for (pos, v) in array.iter().enumerate() {
-        w!(writer, "{:indent$}", "", indent = new_indent);
-        lines_written += write_object(writer, v, new_indent);
-
-        if pos < len - 1 {
-            wln!(writer, ",");
-        } else {
-            wln!(writer);
+    // Validate req_id
+    if let Some(ref req_id) = line.other.get("req_id") {
+        if !(req_id.is_string() || req_id.is_number() || req_id.is_null()) {
+            return Some(BunyanLogParseError::new("[req_id] must be a string or number"));
         }
-        lines_written += 1;
     }
 
-    w!(writer, "{:indent$}]", "", indent = indent);
-
-    lines_written
-}
-
-fn write_err<W: Write>(writer : &mut W, err_map: &Map<String, Value>) -> usize {
-    let mut lines_written = 0;
-
-    if let Some(ref stack_val) = err_map.get("stack") {
-        if let Some(ref stack_str) = stack_val.as_str() {
-            for line in stack_str.lines() {
-                wln!(writer, "{:indent$}{}", "", line, indent=BASE_INDENT_SIZE);
-                lines_written += 1;
-            }
-        } else if let Some(ref stack_array) = stack_val.as_array() {
-            for line in stack_array.iter() {
-                wln!(writer, "{:indent$}{}", "", string_or_value!(line),
-                             indent=BASE_INDENT_SIZE);
-                lines_written += 1;
+    // Validate req
+    if let Some(ref client_req) = line.other.get("req") {
+        if let Some(body) = client_req.get("body") {
+            if body.is_array() {
+                return Some(BunyanLogParseError::new("[req.body] value must be not be an array"));
             }
         }
     }
 
-    lines_written
+    // Validate client_req
+    if let Some(ref client_req) = line.other.get("client_req") {
+        if let Some(ref address) = client_req.get("address") {
+            if !(address.is_string() || address.is_number() || address.is_null()) {
+                return Some(BunyanLogParseError::new("[client_req.address] value must be a string"));
+            }
+        }
+        if let Some(ref port) = client_req.get("port") {
+            if !(port.is_string() || port.is_number() || port.is_null()) {
+                return Some(BunyanLogParseError::new("[client_req.port] value must be a string or number"));
+            }
+        }
+
+        if let Some(body) = client_req.get("body") {
+            if body.is_array() {
+                return Some(BunyanLogParseError::new("[client_req.body] value must be not be an array"));
+            }
+        }
+    }
+
+    // Validate res
+    if let Some(ref res) = line.other.get("res") {
+        if let Some(ref res_map) = res.as_object() {
+            if let Some(headers) = find_headers(res_map) {
+                if !(headers.is_object() || headers.is_string()) {
+                    return Some(BunyanLogParseError::new("[res.header(s)] must be a JSON object or string"));
+                }
+            }
+        }
+    }
+
+    // Validate client_res
+    if let Some(ref res) = line.other.get("client_res") {
+        if let Some(ref res_map) = res.as_object() {
+            if let Some(headers) = find_headers(res_map) {
+                if !(headers.is_object() || headers.is_string()) {
+                    return Some(BunyanLogParseError::new("[client_res.header(s)] must be a JSON object or string"));
+                }
+            }
+            if let Some(body) = res.get("body") {
+                if body.is_array() {
+                    return Some(BunyanLogParseError::new("[client_res.body] value must be not be an array"));
+                }
+                if body.is_object() {
+                    return Some(BunyanLogParseError::new("[client_res.body] value must be not be a JSON object"));
+                }
+            }
+        }
+    }
+
+    None
 }
 
 impl Logger for BunyanLine {
-    fn write_long_format<W: Write>(&self, writer : &mut W) {
-        let log_level: LogLevel = self.level.into();
-        w!(writer, "[{}] {}: {}/",
-               self.time, log_level, self.name);
+    fn write_long_format<W: Write>(&self, writer: &mut W, _output_config: LoggerOutputConfig) -> ParseResult {
+        if let Some(err) = validate_log_data_structure(&self) {
+            return Err(err);
+        }
 
+        let log_level: LogLevel = self.level.into();
+        let mut lines_written: usize = 0;
+
+        // Write the [time], log [level] and app [name]
+        w!(writer, "[{}] {}: {}/", self.time, log_level, self.name);
+
+        // If present, write the [component]
         if let Some(ref component) = self.component {
             w!(writer, "{}/", component);
         }
 
+        // Write the [pid] and [hostname]
         w!(writer, "{} on {}", self.pid, self.hostname);
 
-        if let Some(ref src) = self.src {
-            let mut src_written = false;
-            if let Some(ref file_val) = src.get("file") {
-                if let Some(ref file) = file_val.as_str() {
-                    src_written = true;
-                    w!(writer, " ({}", file);
-                }
-            }
-            if let Some(ref line_val) = src.get("line") {
-                if line_val.is_string() || line_val.is_number() {
-                    w!(writer, ":{}", string_or_value!(line_val));
-                }
-            }
-            if let Some(ref func_val) = src.get("func") {
-                if func_val.is_string() {
-                    w!(writer, " in {}", string_or_value!(func_val));
-                }
-            }
+        let other = &mut self.other.clone();
 
-            if src_written {
-                w!(writer, ")");
-            }
+        // If present, write the source line reference [src]
+        if let Some(err) = write_src(writer, other) {
+            return Err(err);
         }
 
-        w!(writer, ": {}", self.msg);
+        let mut details: Vec<String> = Vec::new();
 
-        write_string_value_params(writer, self);
+        // If our log message [msg] contains a line break, we display it in the details section
+        if self.msg.contains("\n") {
+            let indented_msg = format!("{:indent$}{}", "", self.msg, indent = BASE_INDENT_SIZE);
+            details.push(indented_msg)
+        // Write the log message [msg] as is because there is no line break
+        } else if !self.msg.is_empty() {
+            w!(writer, ": {}", self.msg);
+        } else {
+            w!(writer, ":");
+        }
+
+        if let Some(err) = write_all_extra_params(writer, other, &mut details) {
+            return Err(err);
+        }
+
+        // Write line feed finishing the first line
         wln!(writer);
 
-        let mut needs_divider = false;
+        let wrapped_writer = &mut DividerWriter::new(writer, true);
 
-        if self.req.is_some() {
-            if needs_divider {
-                wln!(writer, "{:indent$}{}", "", DIVIDER, indent = BASE_INDENT_SIZE);
-            }
-
-            needs_divider = write_req(writer, &self.req) > 0;
+        // If present, write the request [req]
+        if let Some(err) = write_req(wrapped_writer, &mut lines_written, "req", other) {
+            return Err(err);
         }
 
-        if self.client_req.is_some() {
-            if needs_divider  {
-                wln!(writer, "{:indent$}{}", "", DIVIDER, indent = BASE_INDENT_SIZE);
-            }
-
-            needs_divider = write_client_req(writer, &self.client_req) > 0;
+        if wrapped_writer.has_been_written {
+            wrapped_writer.mark_divider_as_unwritten();
         }
 
-        if self.res.is_some() {
-            if needs_divider {
-                wln!(writer, "{:indent$}{}", "", DIVIDER, indent = BASE_INDENT_SIZE);
-            }
-
-            needs_divider = write_res(writer, &self.res) > 0;
+        // If present, write the client request [client_req]
+        if let Some(err) = write_req(wrapped_writer, &mut lines_written, "client_req", other) {
+            return Err(err);
         }
 
-        if self.client_res.is_some() {
-            if needs_divider {
-                wln!(writer, "{:indent$}{}", "", DIVIDER, indent = BASE_INDENT_SIZE);
-            }
-
-            needs_divider = write_res(writer, &self.client_res) > 0;
+        if wrapped_writer.has_been_written {
+            wrapped_writer.mark_divider_as_unwritten();
         }
 
-        if has_object_value_params(self) {
-            if needs_divider {
-                wln!(writer, "{:indent$}{}", "", DIVIDER, indent = BASE_INDENT_SIZE);
-            }
-
-           needs_divider = write_object_value_params(writer, self) > 0;
+        // If present, write the response [res]
+        if let Some(err) = write_res(wrapped_writer, &mut lines_written, "res", other) {
+            return Err(err);
         }
 
-        if let Some(ref err_map) = self.err {
-            if needs_divider {
-                wln!(writer, "{:indent$}{}", "", DIVIDER, indent = BASE_INDENT_SIZE);
-            }
-
-            needs_divider = write_err(writer, err_map) > 0;
+        if wrapped_writer.has_been_written {
+            wrapped_writer.mark_divider_as_unwritten();
         }
 
-        if self.other.iter().any(|(_, v)| is_multiline_string(v)) {
-            if needs_divider {
-                wln!(writer, "{:indent$}{}", "", DIVIDER, indent = BASE_INDENT_SIZE);
-            }
-
-            write_multiline_string_value_params(writer, self);
+        // If present, write the response [client_res]
+        if let Some(err) = write_res(wrapped_writer, &mut lines_written, "client_res", other) {
+            return Err(err);
         }
-    }
-}
 
-#[cfg(test)]
-mod tests {
-    // Note this useful idiom: importing names from outer (for mod tests) scope.
-    use super::*;
+        if wrapped_writer.has_been_written {
+            wrapped_writer.mark_divider_as_unwritten();
+        }
 
-    #[test]
-    fn multiline_verify_new_line_is_detected() {
-        let multiline: Value = Value::from("this\nhas\new lines");
-        assert_eq!(is_multiline_string(&multiline), true);
-    }
+        // If present, write the error information [err]
+        if let Some(err) = write_err(wrapped_writer, &mut lines_written, other) {
+            return Err(err);
+        }
 
-    #[test]
-    fn multiline_verify_long_line_is_detected() {
-        let multiline: Value = Value::from(format!("{:repeat$}", "-", repeat=LONG_LINE_SIZE + 1));
-        assert_eq!(is_multiline_string(&multiline), true);
-    }
+        if wrapped_writer.has_been_written {
+            wrapped_writer.mark_divider_as_unwritten();
+        }
 
-    #[test]
-    fn multiline_verify_no_new_line_is_detected() {
-        let multiline: Value = Value::from("this has no new lines");
-        assert_eq!(is_multiline_string(&multiline), false);
+        // Write out all of the values stored in the details vector
+        write_details(wrapped_writer, &mut lines_written, details);
+
+        Ok(lines_written)
     }
 }

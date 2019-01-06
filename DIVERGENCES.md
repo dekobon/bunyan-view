@@ -194,3 +194,45 @@ bunyan-view (rust) output:
     {}
     {}
 ```
+
+#### All extra parameters that qualify as multiline lines will be displayed in details
+
+#### Client request supports trailers
+
+#### Client request will not output `Host` but will instead output `Connecting Host`
+
+#### Reserved field names are always omitted from extra parameters line
+Bunyan line:
+```json
+{"name":"server","hostname":"iZ25apt4ethZ","pid":958,"level":30,"req":{"method":"GET","url":"/ground/fetch?id=null","headers":{"host":"123.123.123.123","connection":"Keep-Alive","accept-encoding":"gzip"},"remoteAddress":"::ffff:123.123.123.123"},"res":{"headers":true,"content":{"status":0,"message":"success","messages":[]}},"msg":"Time used: 30ms","time":"2015-03-07T07:28:32.431Z","v":0}
+```
+
+node-bunyan output:
+```
+[2015-03-07T07:28:32.431Z]  INFO: server/958 on iZ25apt4ethZ: Time used: 30ms (req.remoteAddress=::ffff:123.123.123.123, res.headers=true)
+    GET /ground/fetch?id=null HTTP/1.1
+    host: 123.123.123.123
+    connection: Keep-Alive
+    accept-encoding: gzip
+    --
+    res.content: {
+      "status": 0,
+      "message": "success",
+      "messages": []
+    }
+```
+
+bunyan-view (rust) output:
+```
+[2015-03-07T07:28:32.431Z]  INFO: server/958 on iZ25apt4ethZ: Time used: 30ms (req.remoteAddress=::ffff:123.123.123.123)
+    GET /ground/fetch?id=null HTTP/1.1
+    host: 123.123.123.123
+    connection: Keep-Alive
+    accept-encoding: gzip
+    --
+    res.content: {
+      "status": 0,
+      "message": "success",
+      "messages": []
+    }
+```

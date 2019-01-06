@@ -41,17 +41,3 @@ macro_rules! string_or_value {
         }
     };
 }
-
-macro_rules! get_or_default{
-    ($map:expr, $key:expr, $default:expr) => {
-        if let Some(ref val) = $map.get($key) {
-            if val.is_string() {
-                val.as_str().unwrap_or($default).to_string()
-            } else {
-                val.to_string()
-            }
-        } else {
-            $default.to_string()
-        }
-    }
-}
