@@ -7,6 +7,14 @@ pub struct LogLevelParseError {
     pub input: String,
 }
 
+impl From<String> for LogLevelParseError {
+    fn from(s: String) -> Self {
+        LogLevelParseError {
+            input: s,
+        }
+    }
+}
+
 impl fmt::Display for LogLevelParseError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(

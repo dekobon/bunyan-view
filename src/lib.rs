@@ -62,33 +62,28 @@ impl LogLevel {
     }
 
     pub fn parse<S: Into<String>>(level: S) -> Result<LogLevel, LogLevelParseError> {
-        let level_string: String = level.into();
+        let mut level = level.into();
+        level.make_ascii_uppercase();
+        match level.as_ref() {
+            "TRACE" => Ok(LogLevel::TRACE),
+            "DEBUG" => Ok(LogLevel::DEBUG),
+            "INFO" => Ok(LogLevel::INFO),
+            "WARN" => Ok(LogLevel::WARN),
+            "ERROR" => Ok(LogLevel::ERROR),
+            "FATAL" => Ok(LogLevel::FATAL),
+            _  => {
+                let numeric_string = if level.starts_with("LVL") {
+                    &level[3..]
+                } else {
+                    &level
+                };
 
-        if level_string.eq_ignore_ascii_case("TRACE") {
-            Ok(LogLevel::TRACE)
-        } else if level_string.eq_ignore_ascii_case("DEBUG") {
-            Ok(LogLevel::DEBUG)
-        } else if level_string.eq_ignore_ascii_case("INFO") {
-            Ok(LogLevel::INFO)
-        } else if level_string.eq_ignore_ascii_case("WARN") {
-            Ok(LogLevel::WARN)
-        } else if level_string.eq_ignore_ascii_case("ERROR") {
-            Ok(LogLevel::ERROR)
-        } else if level_string.eq_ignore_ascii_case("FATAL") {
-            Ok(LogLevel::FATAL)
-        } else {
-            let numeric_string = if level_string.to_ascii_uppercase().starts_with("LVL") {
-                &level_string[3..]
-            } else {
-                level_string.as_str()
-            };
-
-            match numeric_string.parse::<u16>() {
-                Ok(code) => Ok(LogLevel::OTHER(code)),
-                Err(_) => Err(LogLevelParseError {
-                    input: level_string.to_string(),
-                }),
+                match numeric_string.parse::<u16>() {
+                    Ok(code) => Ok(LogLevel::OTHER(code)),
+                    Err(_) => Err(LogLevelParseError::from(level)),
+                }
             }
+
         }
     }
 }
