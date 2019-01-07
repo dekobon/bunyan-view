@@ -1,4 +1,4 @@
-[2015-03-07T07:28:32.431Z]  INFO: server/958 on iZ25apt4ethZ: Time used: 30ms (req.remoteAddress=::ffff:123.123.123.123)
+[2015-03-07T07:28:32.431Z]  INFO: server/958 on iZ25apt4ethZ: Time used: 30ms (req.remoteAddress=::ffff:123.123.123.123, res.debug_info={})
     GET /ground/fetch?id=null HTTP/1.1
     host: 123.123.123.123
     connection: Keep-Alive

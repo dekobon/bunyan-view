@@ -1,4 +1,4 @@
-[2015-04-15T10:37:39.557Z]  INFO: multichannel/44973 on macbook-dev:  (res.header=null)
+[2015-04-15T10:37:39.557Z]  INFO: multichannel/44973 on macbook-dev:
     HTTP/1.1 401 Unauthorized
     --
     response: {"error":"InvalidCredentials","description":"The access token provided has expired."}

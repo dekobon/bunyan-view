@@ -7,9 +7,9 @@ use std::io::BufReader;
 use std::io::Read;
 
 use bytes::BufMut;
+use bunyan_view::LoggerOutputConfig;
 
 fn assert_equals_to_file(filename: &str) {
-    let indent = Some(4);
     let format = bunyan_view::LogFormat::Long;
     let mut writer = vec![].writer();
     let file = File::open(filename).expect("File not found");
@@ -22,10 +22,15 @@ fn assert_equals_to_file(filename: &str) {
     expected_file.read_to_string(&mut expected)
         .expect(&["There was a problem opening the expectation file: ", expected_filename].concat());
 
-    let is_strict = false;
-    let is_debug = false;
+    let output_config = LoggerOutputConfig {
+        indent: 4,
+        is_debug: false,
+        is_strict: false,
+        level: None
+    };
+
     bunyan_view::write_bunyan_output(&mut writer, Box::new(reader), &format,
-                                     is_strict, is_debug, indent);
+                                     output_config);
     let actual_bytes: Vec<u8> = writer.into_inner();
     let actual = std::str::from_utf8(&actual_bytes).expect("Couldn't convert bytes");
 
@@ -146,7 +151,7 @@ fn long_old_crashers_244() {
 
 #[test]
 fn long_error_with_stack() {
-    assert_equals_to_file("tests/corpus/error_with_stack.log");
+    assert_equals_to_file("tests/corpus/error-with-stack.log");
 }
 
 #[test]
@@ -157,4 +162,19 @@ fn long_req_with_newlines() {
 #[test]
 fn long_req_with_trailers() {
     assert_equals_to_file("tests/corpus/req-with-trailers.log");
+}
+
+#[test]
+fn long_res_with_empty_object() {
+    assert_equals_to_file("tests/corpus/res-with-empty-object.log");
+}
+
+#[test]
+fn long_with_numeric_req_id() {
+    assert_equals_to_file("tests/corpus/with-numeric-req-id.log");
+}
+
+#[test]
+fn long_with_weird_extra_params() {
+    assert_equals_to_file("tests/corpus/with-weird-extra-params.log");
 }

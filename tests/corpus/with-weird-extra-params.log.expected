@@ -1,0 +1,68 @@
+[2012-05-08T16:57:55.586Z]  INFO: agent1/73267 on headnode: message (req=null)
+[2012-05-08T16:57:55.586Z]  INFO: agent1/73267 on headnode: message (req=3.14)
+[2012-05-08T16:57:55.586Z]  INFO: agent1/73267 on headnode: message (req=some-string)
+[2012-05-08T16:57:55.586Z]  INFO: agent1/73267 on headnode: message
+    req: [
+      "a",
+      "b"
+    ]
+[2012-05-08T16:57:55.586Z]  INFO: agent1/73267 on headnode: message (req.a=b)
+    undefined undefined HTTP/1.1
+[2012-05-08T16:57:55.586Z]  INFO: agent1/73267 on headnode: message
+    undefined undefined HTTP/1.1
+    --
+    req.a: {
+      "b": "c"
+    }
+[2012-05-08T16:57:55.586Z]  INFO: agent1/73267 on headnode: message
+    undefined undefined HTTP/1.1
+    --
+    req.a: [
+      "b",
+      "c"
+    ]
+[2012-05-08T16:57:55.586Z]  INFO: agent1/73267 on headnode: message (wat=null)
+[2012-05-08T16:57:55.586Z]  INFO: agent1/73267 on headnode: message (wat=3.14)
+[2012-05-08T16:57:55.586Z]  INFO: agent1/73267 on headnode: message (wat=some-string)
+[2012-05-08T16:57:55.586Z]  INFO: agent1/73267 on headnode: message
+    wat: [
+      "a",
+      "b"
+    ]
+[2012-05-08T16:57:55.586Z]  INFO: agent1/73267 on headnode: message
+    wat: {
+      "a": "b"
+    }
+[2012-05-08T16:57:55.586Z]  INFO: agent1/73267 on headnode: message
+    wat: {
+      "a": {
+        "b": "c"
+      }
+    }
+[2012-05-08T16:57:55.586Z]  INFO: agent1/73267 on headnode: message
+    wat: {
+      "a": [
+        "b",
+        "c"
+      ]
+    }
+[2012-05-08T16:57:55.586Z]  INFO: agent1/73267 on headnode: message (err=true)
+[2012-05-08T16:57:55.586Z]  INFO: agent1/73267 on headnode: message (err=false)
+[2012-05-08T16:57:55.586Z]  INFO: agent1/73267 on headnode: message (err=null)
+[2012-05-08T16:57:55.586Z]  INFO: agent1/73267 on headnode: message (err=3.14)
+[2012-05-08T16:57:55.586Z]  INFO: agent1/73267 on headnode: message (err=some-string)
+[2012-05-08T16:57:55.586Z]  INFO: agent1/73267 on headnode: message
+    err: [
+      "a",
+      "b"
+    ]
+[2012-05-08T16:57:55.586Z]  INFO: agent1/73267 on headnode: message (err.a=b)
+[2012-05-08T16:57:55.586Z]  INFO: agent1/73267 on headnode: message
+    err.a: {
+      "b": "c"
+    }
+[2012-05-08T16:57:55.586Z]  INFO: agent1/73267 on headnode: message
+    err.a: [
+      "b",
+      "c"
+    ]
