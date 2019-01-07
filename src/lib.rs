@@ -172,7 +172,7 @@ pub struct LoggerOutputConfig {
     pub level: Option<u16>,
 }
 
-fn handle_error<W>(writer: &mut W, error: Error, output_config: &LoggerOutputConfig)
+fn handle_error<W>(writer: &mut W, error: &Error, output_config: &LoggerOutputConfig)
 where
     W: Write,
 {
@@ -210,7 +210,7 @@ pub fn write_bunyan_output<W, R>(
     writer: &mut W,
     reader: R,
     format: &LogFormat,
-    output_config: LoggerOutputConfig,
+    output_config: &LoggerOutputConfig,
 ) where
     W: Write,
     R: BufRead,
@@ -237,21 +237,18 @@ pub fn write_bunyan_output<W, R>(
 
                             if write_log {
                                 let result = format.write_log(writer, log, output_config.clone());
-                                match result {
-                                    Err(e) => {
-                                        let kind = Kind::from(e);
-                                        let error = Error::new(kind, line, line_no, None);
-                                        handle_error(writer, error, &output_config);
-                                    }
-                                    Ok(_) => (),
+                                if let Err(e) = result {
+                                    let kind = Kind::from(e);
+                                    let error = Error::new(kind, line, line_no, None);
+                                    handle_error(writer, &error, &output_config);
                                 }
                             }
                         }
                         Err(raw_error) => {
-                            let column: usize = raw_error.column().clone();
+                            let column: usize = raw_error.column();
                             let kind = Kind::from(raw_error);
                             let error = Error::new(kind, line, line_no, Some(column));
-                            handle_error(writer, error, &output_config);
+                            handle_error(writer, &error, &output_config);
                         }
                     }
                 }

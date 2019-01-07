@@ -17,8 +17,8 @@ pub struct DividerWriter<'a, W: Write> {
 impl<'a, W: Write> DividerWriter<'a, W> {
     pub fn new(inner: &'a mut W, divider_written: bool) -> DividerWriter<W> {
         DividerWriter {
-            inner: inner,
-            divider_written: divider_written.clone(),
+            inner,
+            divider_written,
             has_been_written: false,
         }
     }

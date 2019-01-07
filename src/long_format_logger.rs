@@ -117,7 +117,7 @@ fn write_all_extra_params<W: Write>(
     /// # Arguments
     ///
     /// * `text` - string to test to see if it qualifies for multiline output
-    fn is_multiline_string(text: &String) -> bool {
+    fn is_multiline_string(text: &str) -> bool {
         text.contains('\n') || text.len() > LONG_LINE_SIZE
     }
 
@@ -990,7 +990,7 @@ impl Logger for BunyanLine {
         let mut details: Vec<String> = Vec::new();
 
         // If our log message [msg] contains a line break, we display it in the details section
-        if self.msg.contains("\n") {
+        if self.msg.contains('\n') {
             let indented_msg = format!("{:indent$}{}", "", self.msg, indent = BASE_INDENT_SIZE);
             details.push(indented_msg)
         // Write the log message [msg] as is because there is no line break
