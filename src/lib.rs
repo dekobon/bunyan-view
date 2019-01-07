@@ -3,7 +3,6 @@ extern crate serde_derive;
 extern crate serde;
 extern crate serde_json;
 extern crate httpstatus;
-extern crate itertools;
 
 #[macro_use]
 mod macros;

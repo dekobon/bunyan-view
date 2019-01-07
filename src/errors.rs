@@ -1,5 +1,6 @@
 use std::error::Error as StdError;
 use std::fmt;
+use std::num::ParseIntError;
 
 #[derive(Debug, Clone)]
 pub struct LogLevelParseError {
@@ -24,7 +25,7 @@ impl StdError for LogLevelParseError {
 
 #[derive(Debug, Clone)]
 pub struct BunyanLogParseError {
-    msg: String,
+    msg: String
 }
 
 impl BunyanLogParseError {
@@ -49,7 +50,39 @@ impl StdError for BunyanLogParseError {
     }
 }
 
-pub type ParseResult = std::result::Result<usize, BunyanLogParseError>;
+#[derive(Debug, Clone)]
+pub enum ParseIntFromJsonError {
+    Structural(BunyanLogParseError),
+    Numeric(ParseIntError),
+}
+
+impl fmt::Display for ParseIntFromJsonError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            ParseIntFromJsonError::Structural(ref e) => e.fmt(f),
+            ParseIntFromJsonError::Numeric(ref e) => e.fmt(f),
+        }
+    }
+}
+
+impl StdError for ParseIntFromJsonError {
+    fn description(&self) -> &str {
+        match *self {
+            ParseIntFromJsonError::Structural(ref e) => e.description(),
+            // This already impls `Error`, so defer to its own implementation.
+            ParseIntFromJsonError::Numeric(ref e) => e.description()
+        }
+    }
+
+    fn cause(&self) -> Option<&StdError> {
+        match *self {
+            ParseIntFromJsonError::Structural(ref e) => Some(e),
+            ParseIntFromJsonError::Numeric(ref e) => Some(e),
+        }
+    }
+}
+
+pub type ParseResult = std::result::Result<(), BunyanLogParseError>;
 
 pub struct Error {
     inner: Box<Inner>,
