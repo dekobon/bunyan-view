@@ -1,23 +1,46 @@
-use crate::{BunyanLine, Logger, LogLevel, LoggerOutputConfig};
-use crate::errors::{BunyanLogParseError, ParseResult, ParseIntFromJsonError};
 use crate::divider_writer::DividerWriter;
+use crate::errors::{BunyanLogParseError, ParseIntFromJsonError, ParseResult};
 use crate::BASE_INDENT_SIZE;
+use crate::{BunyanLine, LogLevel, Logger, LoggerOutputConfig};
 
 use std::io::Write;
 
 use httpstatus::StatusCode;
 
+use serde_json::map::Map;
 use serde_json::Value;
-use serde_json::map::Map as Map;
 
 /// Maximum characters for a string value in the extra parameters section
 const LONG_LINE_SIZE: usize = 50;
 /// Reserved keywords for requests records
-const REQ_RESERVED: [&str; 6] = ["method", "url", "httpVersion", "body", "headers", "trailers"];
+const REQ_RESERVED: [&str; 6] = [
+    "method",
+    "url",
+    "httpVersion",
+    "body",
+    "headers",
+    "trailers",
+];
 /// Reserved keywords for client requests records
-const CLIENT_REQ_RESERVED: [&str; 8] = ["method", "url", "httpVersion", "body", "headers", "trailers", "address", "port"];
+const CLIENT_REQ_RESERVED: [&str; 8] = [
+    "method",
+    "url",
+    "httpVersion",
+    "body",
+    "headers",
+    "trailers",
+    "address",
+    "port",
+];
 /// Reserved keywords for responses records
-const RES_RESERVED: [&str; 6] = ["statusCode", "header", "headers", "trailer", "body", "trailer"];
+const RES_RESERVED: [&str; 6] = [
+    "statusCode",
+    "header",
+    "headers",
+    "trailer",
+    "body",
+    "trailer",
+];
 /// Reserved keywords for client responses records
 const CLIENT_RES_RESERVED: [&str; 5] = ["statusCode", "body", "header", "headers", "trailer"];
 /// Reserved keywords for error records
@@ -42,7 +65,6 @@ fn write_src<W: Write>(writer: &mut W, other: &mut Map<String, Value>) {
                 if let Some(ref file) = map.get("file") {
                     w!(writer, " ({}", string_or_value!(file));
 
-
                     if let Some(ref line) = map.get("line") {
                         w!(writer, ":{}", string_or_value!(line));
                     }
@@ -53,9 +75,9 @@ fn write_src<W: Write>(writer: &mut W, other: &mut Map<String, Value>) {
 
                     w!(writer, ")");
                 }
-            },
+            }
             Value::String(text) => w!(writer, " ({})", text),
-            _ => ()
+            _ => (),
         }
     }
 }
@@ -68,8 +90,11 @@ fn write_src<W: Write>(writer: &mut W, other: &mut Map<String, Value>) {
 /// * `other` - Map containing all non-explicitly deserialized keys and values
 /// * `details` - Mutable vector containing strings to be written as output later
 ///
-fn write_all_extra_params<W: Write>(writer: &mut W, other: &mut Map<String, Value>,
-                                    details: &mut Vec<String>) {
+fn write_all_extra_params<W: Write>(
+    writer: &mut W,
+    other: &mut Map<String, Value>,
+    details: &mut Vec<String>,
+) {
     /// Returns the passed value as a pretty printed JSON string with indents.
     ///
     /// # Arguments
@@ -78,17 +103,16 @@ fn write_all_extra_params<W: Write>(writer: &mut W, other: &mut Map<String, Valu
     /// * `caller_option` - Optional name of top-level record (eg `req`, `res`, `err`, etc)
     ///
     fn detail_pretty_print(key: &str, value: &Value, caller_option: Option<&str>) -> String {
-        let pretty = ::serde_json::to_string_pretty(value)
-            .unwrap_or("[malformed]".to_string());
+        let pretty = ::serde_json::to_string_pretty(value).unwrap_or("[malformed]".to_string());
 
         match caller_option {
             Some(caller) => format!("{}.{}: {}", caller, key, pretty),
-            None => format!("{}: {}", key, pretty)
+            None => format!("{}: {}", key, pretty),
         }
     }
 
-    /// Returns true if the given JSON value is a JSON string and it has a newline character or it is
-    /// longer than the LONG_LINE_SIZE (50 characterS).
+    /// Returns true if the given JSON value is a JSON string and it has a newline character or it
+    /// is longer than the LONG_LINE_SIZE (50 characterS).
     ///
     /// # Arguments
     ///
@@ -122,14 +146,19 @@ fn write_all_extra_params<W: Write>(writer: &mut W, other: &mut Map<String, Valu
     /// * `value` - Value to be converted to a pretty printed string
     /// * `caller_option` - Optional name of top-level record (eg `req`, `res`, `err`, etc)
     /// * `details` - Mutable vector containing strings to be written as output later
-    fn stringify(key: &str, value: &Value, caller_option: Option<&str>, details: &mut Vec<String>) -> Option<String> {
+    fn stringify(
+        key: &str,
+        value: &Value,
+        caller_option: Option<&str>,
+        details: &mut Vec<String>,
+    ) -> Option<String> {
         match value {
             Value::String(text) => {
                 // Add long strings to details
                 if is_multiline_string(text) {
                     let detail = match caller_option {
                         Some(caller) => format!("{}.{}: {}", caller, key, text),
-                        None => format!("{}: {}", key, text)
+                        None => format!("{}: {}", key, text),
                     };
 
                     details.push(detail);
@@ -139,7 +168,7 @@ fn write_all_extra_params<W: Write>(writer: &mut W, other: &mut Map<String, Valu
                 } else {
                     Some(quoteify(value))
                 }
-            },
+            }
             Value::Number(_) => Some(string_or_value!(value)),
             Value::Bool(_) => Some(string_or_value!(value)),
             Value::Null => Some(string_or_value!(value)),
@@ -150,7 +179,7 @@ fn write_all_extra_params<W: Write>(writer: &mut W, other: &mut Map<String, Valu
                     details.push(detail_pretty_print(key, value, caller_option));
                     None
                 }
-            },
+            }
             Value::Array(array) => {
                 if array.is_empty() {
                     Some("[]".to_string())
@@ -188,9 +217,14 @@ fn write_all_extra_params<W: Write>(writer: &mut W, other: &mut Map<String, Valu
     /// * `details` - Mutable vector containing strings to be written as output later
     /// * `exclude` - Closure in which when evaluated is true will exclude a given parameter
     ///
-    fn write_params_for_object<W: Write>(writer: &mut W, caller_option: Option<&str>, is_first: &mut bool,
-                                         node_option: Option<&Value>, details: &mut Vec<String>,
-                                         exclude: &Fn(&str) -> bool) {
+    fn write_params_for_object<W: Write>(
+        writer: &mut W,
+        caller_option: Option<&str>,
+        is_first: &mut bool,
+        node_option: Option<&Value>,
+        details: &mut Vec<String>,
+        exclude: &Fn(&str) -> bool,
+    ) {
         if node_option.is_none() {
             return;
         }
@@ -198,7 +232,9 @@ fn write_all_extra_params<W: Write>(writer: &mut W, other: &mut Map<String, Valu
         let node = node_option.unwrap();
 
         // Display strings, numbers and null values, as-is
-        if caller_option.is_some() && (node.is_string() || node.is_number() || node.is_null() || node.is_boolean()) {
+        if caller_option.is_some()
+            && (node.is_string() || node.is_number() || node.is_null() || node.is_boolean())
+        {
             write_formatting(writer, is_first);
             w!(writer, "{}={}", caller_option.unwrap(), quoteify(node));
             return;
@@ -220,21 +256,20 @@ fn write_all_extra_params<W: Write>(writer: &mut W, other: &mut Map<String, Valu
                 continue;
             }
 
-            let value: Option<String> = stringify(k, v,
-                                                  caller_option, details);
+            let value: Option<String> = stringify(k, v, caller_option, details);
 
             if let Some(text) = value {
                 write_formatting(writer, is_first);
 
                 match caller_option {
                     Some(caller) => w!(writer, "{}.{}={}", caller, k, text),
-                    None => w!(writer, "{}={}", k, text)
+                    None => w!(writer, "{}={}", k, text),
                 }
             }
         }
     }
 
-    let mut is_first : bool = true;
+    let mut is_first: bool = true;
 
     // REQUEST ID [req_id] - special case we always write this first for visibility
     if let Some(req_id) = other.remove("req_id") {
@@ -243,43 +278,73 @@ fn write_all_extra_params<W: Write>(writer: &mut W, other: &mut Map<String, Valu
     }
 
     /* Note: based on logic in write_params_for_object, parameters that do not fit
-       properly within the extra parameters section, will be added to the details
-       vector. */
+    properly within the extra parameters section, will be added to the details
+    vector. */
 
     // Write out all keys and values that is are in GENERAL_RESERVED.
     let other_value = ::serde_json::to_value(&other).unwrap();
-    write_params_for_object(writer, None, &mut is_first,
-                            Some(&other_value), details,
-                            &|k: &str | { GENERAL_RESERVED.contains(&k) });
+    write_params_for_object(
+        writer,
+        None,
+        &mut is_first,
+        Some(&other_value),
+        details,
+        &|k: &str| GENERAL_RESERVED.contains(&k),
+    );
 
     /* Below, we write out the parameters of all JSON keys that are present in
-       GENERAL_RESERVED in order to output any of the contents that need to be
-       present in the extra parameters section of the logs. */
+    GENERAL_RESERVED in order to output any of the contents that need to be
+    present in the extra parameters section of the logs. */
 
     // REQUEST [rec]
-    write_params_for_object(writer, Some("req"), &mut is_first,
-                            other.get("req"), details,
-                            &|k: &str | REQ_RESERVED.contains(&k));
+    write_params_for_object(
+        writer,
+        Some("req"),
+        &mut is_first,
+        other.get("req"),
+        details,
+        &|k: &str| REQ_RESERVED.contains(&k),
+    );
 
     // CLIENT REQUEST [client_req]
-    write_params_for_object(writer, Some("client_req"), &mut is_first,
-                            other.get("client_req"), details,
-                            &|k: &str | CLIENT_REQ_RESERVED.contains(&k));
+    write_params_for_object(
+        writer,
+        Some("client_req"),
+        &mut is_first,
+        other.get("client_req"),
+        details,
+        &|k: &str| CLIENT_REQ_RESERVED.contains(&k),
+    );
 
     // RESPONSE [res]
-    write_params_for_object(writer, Some("res"), &mut is_first,
-                            other.get("res"), details,
-                            &|k: &str | RES_RESERVED.contains(&k));
+    write_params_for_object(
+        writer,
+        Some("res"),
+        &mut is_first,
+        other.get("res"),
+        details,
+        &|k: &str| RES_RESERVED.contains(&k),
+    );
 
     // CLIENT RESPONSE [client_res]
-    write_params_for_object(writer, Some("client_res"), &mut is_first,
-                            other.get("client_res"), details,
-                            &|k: &str | CLIENT_RES_RESERVED.contains(&k));
+    write_params_for_object(
+        writer,
+        Some("client_res"),
+        &mut is_first,
+        other.get("client_res"),
+        details,
+        &|k: &str| CLIENT_RES_RESERVED.contains(&k),
+    );
 
     // ERROR INFORMATION [err]
-    write_params_for_object(writer, Some("err"), &mut is_first,
-                            other.get("err"), details,
-                            &|k: &str | ERR_RESERVED.contains(&k));
+    write_params_for_object(
+        writer,
+        Some("err"),
+        &mut is_first,
+        other.get("err"),
+        details,
+        &|k: &str| ERR_RESERVED.contains(&k),
+    );
 
     if !is_first {
         w!(writer, ")");
@@ -308,27 +373,43 @@ fn write_req<W: Write>(writer: &mut W, key: &str, other: &mut Map<String, Value>
     /// errors where the JSON data is not in the expected format, it will return a
     /// `ParseResult`.
     ///
-    fn write_req_summary<W: Write>(writer: &mut W, caller: &str, req_map: &mut Map<String, Value>) -> ParseResult {
+    fn write_req_summary<W: Write>(
+        writer: &mut W,
+        caller: &str,
+        req_map: &mut Map<String, Value>,
+    ) -> ParseResult {
         w!(writer, "{:indent$}", "", indent = BASE_INDENT_SIZE);
 
         if let Some(method) = req_map.remove("method") {
             if let Some(method_text) = method.as_str() {
                 w!(writer, "{} ", method_text);
             } else {
-                return Err(BunyanLogParseError::new(format!("[{}.method] is not a JSON string", caller)));
+                return Err(BunyanLogParseError::new(format!(
+                    "[{}.method] is not a JSON string",
+                    caller
+                )));
             }
         } else {
-            return Err(BunyanLogParseError::new(format!("[{}.method] is not present", caller)));
+            return Err(BunyanLogParseError::new(format!(
+                "[{}.method] is not present",
+                caller
+            )));
         }
 
         if let Some(url) = req_map.remove("url") {
             if let Some(url_text) = url.as_str() {
                 w!(writer, "{} ", url_text);
             } else {
-                return Err(BunyanLogParseError::new(format!("[{}.url] is not a JSON string", caller)));
+                return Err(BunyanLogParseError::new(format!(
+                    "[{}.url] is not a JSON string",
+                    caller
+                )));
             }
         } else {
-            return Err(BunyanLogParseError::new(format!("[{}.url] is not present", caller)));
+            return Err(BunyanLogParseError::new(format!(
+                "[{}.url] is not present",
+                caller
+            )));
         }
 
         if let Some(http_version) = req_map.remove("httpVersion") {
@@ -336,7 +417,12 @@ fn write_req<W: Write>(writer: &mut W, key: &str, other: &mut Map<String, Value>
                 Value::String(text) => w!(writer, "HTTP/{}", text),
                 Value::Number(number) => w!(writer, "HTTP/{}", number),
                 Value::Null => w!(writer, "HTTP/{}", DEFAULT_HTTP_VERSION),
-                _ => return Err(BunyanLogParseError::new(format!("[{}.httpVersion] is not a string or number", caller)))
+                _ => {
+                    return Err(BunyanLogParseError::new(format!(
+                        "[{}.httpVersion] is not a string or number",
+                        caller
+                    )))
+                }
             };
         } else {
             // we default to 1.1 if value is not present because that's what node bunyan does
@@ -371,8 +457,13 @@ fn write_req<W: Write>(writer: &mut W, key: &str, other: &mut Map<String, Value>
     // CONNECTING HOST FOR CLIENT REQUEST
     if key.eq("client_req") {
         if let Some(address) = req_map.remove("address") {
-            w!(writer, "{:indent$}Connecting Host: {}", "", string_or_value!(address),
-               indent = BASE_INDENT_SIZE);
+            w!(
+                writer,
+                "{:indent$}Connecting Host: {}",
+                "",
+                string_or_value!(address),
+                indent = BASE_INDENT_SIZE
+            );
 
             if let Some(port) = req_map.remove("port") {
                 w!(writer, ":{}", string_or_value!(port));
@@ -390,13 +481,20 @@ fn write_req<W: Write>(writer: &mut W, key: &str, other: &mut Map<String, Value>
     // HTTP BODY
     if let Some(body) = req_map.remove("body") {
         if let Some(body_map) = body.as_object() {
-            let pretty = ::serde_json::to_string_pretty(&body_map).unwrap_or("[malformed]".to_string());
+            let pretty =
+                ::serde_json::to_string_pretty(&body_map).unwrap_or("[malformed]".to_string());
             for line in pretty.lines() {
                 wln!(writer, "{:indent$}{}", "", line, indent = BASE_INDENT_SIZE);
             }
         } else {
             let body_text = string_or_value!(body);
-            wln!(writer, "{:indent$}{}", "", body_text, indent = BASE_INDENT_SIZE);
+            wln!(
+                writer,
+                "{:indent$}{}",
+                "",
+                body_text,
+                indent = BASE_INDENT_SIZE
+            );
         }
     }
 
@@ -419,18 +517,22 @@ fn json_string_or_number_as_u16(val: &Value) -> Result<u16, ParseIntFromJsonErro
         Value::Number(number) => {
             if let Some(code) = number.as_u64() {
                 if code > u64::from(std::u16::MAX) {
-                    let err = BunyanLogParseError::new(
-                        format!("Number is greater than u16 bounds: {}", code));
+                    let err = BunyanLogParseError::new(format!(
+                        "Number is greater than u16 bounds: {}",
+                        code
+                    ));
                     Err(ParseIntFromJsonError::Structural(err))
                 } else {
                     Ok(code as u16)
                 }
             } else {
-                let err = BunyanLogParseError::new(
-                    format!("Number can't be converted to u64: {}", string_or_value!(val)));
+                let err = BunyanLogParseError::new(format!(
+                    "Number can't be converted to u64: {}",
+                    string_or_value!(val)
+                ));
                 Err(ParseIntFromJsonError::Structural(err))
             }
-        },
+        }
         Value::String(string) => {
             let code = string.parse::<u16>();
 
@@ -438,25 +540,21 @@ fn json_string_or_number_as_u16(val: &Value) -> Result<u16, ParseIntFromJsonErro
                 Ok(val) => Ok(val),
                 Err(e) => Err(ParseIntFromJsonError::Numeric(e)),
             }
-        },
+        }
         Value::Null => {
-            let err = BunyanLogParseError::new(
-                "Integers can't be parsed from null nodes");
+            let err = BunyanLogParseError::new("Integers can't be parsed from null nodes");
             Err(ParseIntFromJsonError::Structural(err))
         }
         Value::Object(_) => {
-            let err = BunyanLogParseError::new(
-                "Integers can't be parsed from JSON objects");
+            let err = BunyanLogParseError::new("Integers can't be parsed from JSON objects");
             Err(ParseIntFromJsonError::Structural(err))
-        },
+        }
         Value::Array(_) => {
-            let err = BunyanLogParseError::new(
-                "Integers can't be parsed from JSON arrays");
+            let err = BunyanLogParseError::new("Integers can't be parsed from JSON arrays");
             Err(ParseIntFromJsonError::Structural(err))
-        },
+        }
         Value::Bool(_) => {
-            let err = BunyanLogParseError::new(
-                "Integers can't be parsed from boolean values");
+            let err = BunyanLogParseError::new("Integers can't be parsed from boolean values");
             Err(ParseIntFromJsonError::Structural(err))
         }
     }
@@ -494,13 +592,15 @@ fn write_res<W: Write>(writer: &mut W, key: &str, other: &mut Map<String, Value>
     ///
     /// If we can't parse the status code, then we behave as if there was no status code logged.
     ///
-    fn write_res_status_code<W: Write>(writer: &mut W, optional_code: Option<Value>,
-                                       option_http_version: Option<&str>) {
-
+    fn write_res_status_code<W: Write>(
+        writer: &mut W,
+        optional_code: Option<Value>,
+        option_http_version: Option<&str>,
+    ) {
         let numeric_status_code = if let Some(json_value) = optional_code {
             match json_string_or_number_as_u16(&json_value) {
                 Err(_) => None,
-                Ok(number) => Some(number)
+                Ok(number) => Some(number),
             }
         } else {
             None
@@ -508,7 +608,13 @@ fn write_res<W: Write>(writer: &mut W, key: &str, other: &mut Map<String, Value>
 
         if let Some(code) = numeric_status_code {
             let http_version = option_http_version.unwrap_or(DEFAULT_HTTP_VERSION);
-            w!(writer, "{:indent$}HTTP/{}", "", http_version, indent = BASE_INDENT_SIZE);
+            w!(
+                writer,
+                "{:indent$}HTTP/{}",
+                "",
+                http_version,
+                indent = BASE_INDENT_SIZE
+            );
 
             let status_code = StatusCode::from(code);
             w!(writer, " {} {}", code, status_code.reason_phrase());
@@ -541,21 +647,22 @@ fn write_res<W: Write>(writer: &mut W, key: &str, other: &mut Map<String, Value>
                     None
                 };
 
-                write_res_status_code(writer, res_map.remove("statusCode"),
-                                      http_version);
+                write_res_status_code(writer, res_map.remove("statusCode"), http_version);
 
                 let lines = headers_str.lines();
 
                 for line in lines {
-                    if line.is_empty() { continue; }
+                    if line.is_empty() {
+                        continue;
+                    }
                     wln!(writer, "{:indent$}{}", "", line, indent = BASE_INDENT_SIZE);
                 }
-            },
+            }
             Value::Object(_) => {
                 write_res_status_code(writer, res_map.remove("statusCode"), None);
                 write_headers(writer, headers);
-            },
-            _ => ()
+            }
+            _ => (),
         }
     // Attempt to write out the status code line, even if we don't have headers
     } else {
@@ -587,11 +694,13 @@ fn write_headers<W: Write>(writer: &mut W, headers: &Value) {
     match headers {
         Value::String(headers_string) => {
             for line in headers_string.lines() {
-                if line.trim().is_empty() { continue; }
+                if line.trim().is_empty() {
+                    continue;
+                }
 
                 wln!(writer, "{:indent$}{}", "", line, indent = BASE_INDENT_SIZE);
             }
-        },
+        }
         Value::Object(headers_map) => {
             for (k, v) in headers_map.iter() {
                 w!(writer, "{:indent$}{}:", "", k, indent = BASE_INDENT_SIZE);
@@ -608,7 +717,7 @@ fn write_headers<W: Write>(writer: &mut W, headers: &Value) {
                 }
             }
         }
-        _ => ()
+        _ => (),
     }
 }
 
@@ -619,7 +728,7 @@ fn write_headers<W: Write>(writer: &mut W, headers: &Value) {
 /// * `writer` - Write implementation to output data to
 /// * `other` - Map containing all non-explicitly deserialized keys and values
 ///
-fn write_err<W: Write>(writer : &mut W, other: &mut Map<String, Value>) {
+fn write_err<W: Write>(writer: &mut W, other: &mut Map<String, Value>) {
     let err_option = other.remove("err");
 
     if err_option.is_none() {
@@ -640,16 +749,21 @@ fn write_err<W: Write>(writer : &mut W, other: &mut Map<String, Value>) {
                 for line in stack_str.lines() {
                     wln!(writer, "{:indent$}{}", "", line, indent = BASE_INDENT_SIZE);
                 }
-            },
+            }
             Value::Array(stack_array) => {
                 for line in stack_array.iter() {
-                    wln!(writer, "{:indent$}{}", "", string_or_value!(line),
-                         indent = BASE_INDENT_SIZE);
+                    wln!(
+                        writer,
+                        "{:indent$}{}",
+                        "",
+                        string_or_value!(line),
+                        indent = BASE_INDENT_SIZE
+                    );
                 }
-            },
+            }
             _ => {
-                let pretty = ::serde_json::to_string_pretty(&stack_val)
-                    .unwrap_or("[malformed]".to_string());
+                let pretty =
+                    ::serde_json::to_string_pretty(&stack_val).unwrap_or("[malformed]".to_string());
                 for line in pretty.lines() {
                     wln!(writer, "{:indent$}{}", "", line, indent = BASE_INDENT_SIZE);
                 }
@@ -669,7 +783,13 @@ fn write_err<W: Write>(writer : &mut W, other: &mut Map<String, Value>) {
 fn write_details<W: Write>(divider_writer: &mut DividerWriter<W>, details: Vec<String>) {
     for item in details {
         for line in item.lines() {
-            wln!(divider_writer, "{:indent$}{}", "", line, indent = BASE_INDENT_SIZE);
+            wln!(
+                divider_writer,
+                "{:indent$}{}",
+                "",
+                line,
+                indent = BASE_INDENT_SIZE
+            );
         }
 
         if divider_writer.has_been_written {
@@ -718,18 +838,22 @@ fn validate_log_data_structure(line: &BunyanLine) -> Option<BunyanLogParseError>
                 }
                 if let Some(ref line) = src_map.get("line") {
                     if !(line.is_string() || line.is_number()) {
-                        return Some(BunyanLogParseError::new("[src.line] must be a number or string"))
+                        return Some(BunyanLogParseError::new(
+                            "[src.line] must be a number or string",
+                        ));
                     }
                 }
                 if let Some(ref func) = src_map.get("func") {
                     if !func.is_string() {
-                        return Some(BunyanLogParseError::new("[src.func] must be a string"))
+                        return Some(BunyanLogParseError::new("[src.func] must be a string"));
                     }
                 }
-            },
+            }
             Value::String(_) => (),
             _ => {
-                return Some(BunyanLogParseError::new("[src] value must be a JSON object or string"));
+                return Some(BunyanLogParseError::new(
+                    "[src] value must be a JSON object or string",
+                ));
             }
         }
     }
@@ -737,7 +861,9 @@ fn validate_log_data_structure(line: &BunyanLine) -> Option<BunyanLogParseError>
     // Validate req_id
     if let Some(ref req_id) = line.other.get("req_id") {
         if !(req_id.is_string() || req_id.is_number() || req_id.is_null()) {
-            return Some(BunyanLogParseError::new("[req_id] must be a string or number"));
+            return Some(BunyanLogParseError::new(
+                "[req_id] must be a string or number",
+            ));
         }
     }
 
@@ -745,7 +871,9 @@ fn validate_log_data_structure(line: &BunyanLine) -> Option<BunyanLogParseError>
     if let Some(ref client_req) = line.other.get("req") {
         if let Some(body) = client_req.get("body") {
             if body.is_array() {
-                return Some(BunyanLogParseError::new("[req.body] value must be not be an array"));
+                return Some(BunyanLogParseError::new(
+                    "[req.body] value must be not be an array",
+                ));
             }
         }
     }
@@ -754,18 +882,24 @@ fn validate_log_data_structure(line: &BunyanLine) -> Option<BunyanLogParseError>
     if let Some(ref client_req) = line.other.get("client_req") {
         if let Some(ref address) = client_req.get("address") {
             if !(address.is_string() || address.is_number() || address.is_null()) {
-                return Some(BunyanLogParseError::new("[client_req.address] value must be a string"));
+                return Some(BunyanLogParseError::new(
+                    "[client_req.address] value must be a string",
+                ));
             }
         }
         if let Some(ref port) = client_req.get("port") {
             if !(port.is_string() || port.is_number() || port.is_null()) {
-                return Some(BunyanLogParseError::new("[client_req.port] value must be a string or number"));
+                return Some(BunyanLogParseError::new(
+                    "[client_req.port] value must be a string or number",
+                ));
             }
         }
 
         if let Some(body) = client_req.get("body") {
             if body.is_array() {
-                return Some(BunyanLogParseError::new("[client_req.body] value must be not be an array"));
+                return Some(BunyanLogParseError::new(
+                    "[client_req.body] value must be not be an array",
+                ));
             }
         }
     }
@@ -775,7 +909,9 @@ fn validate_log_data_structure(line: &BunyanLine) -> Option<BunyanLogParseError>
         if let Some(ref res_map) = res.as_object() {
             if let Some(headers) = find_headers(res_map) {
                 if !(headers.is_object() || headers.is_string()) {
-                    return Some(BunyanLogParseError::new("[res.header(s)] must be a JSON object or string"));
+                    return Some(BunyanLogParseError::new(
+                        "[res.header(s)] must be a JSON object or string",
+                    ));
                 }
             }
         }
@@ -793,15 +929,21 @@ fn validate_log_data_structure(line: &BunyanLine) -> Option<BunyanLogParseError>
         if let Some(ref res_map) = res.as_object() {
             if let Some(headers) = find_headers(res_map) {
                 if !(headers.is_object() || headers.is_string()) {
-                    return Some(BunyanLogParseError::new("[client_res.header(s)] must be a JSON object or string"));
+                    return Some(BunyanLogParseError::new(
+                        "[client_res.header(s)] must be a JSON object or string",
+                    ));
                 }
             }
             if let Some(body) = res.get("body") {
                 if body.is_array() {
-                    return Some(BunyanLogParseError::new("[client_res.body] value must be not be an array"));
+                    return Some(BunyanLogParseError::new(
+                        "[client_res.body] value must be not be an array",
+                    ));
                 }
                 if body.is_object() {
-                    return Some(BunyanLogParseError::new("[client_res.body] value must be not be a JSON object"));
+                    return Some(BunyanLogParseError::new(
+                        "[client_res.body] value must be not be a JSON object",
+                    ));
                 }
             }
         }
@@ -818,7 +960,11 @@ fn validate_log_data_structure(line: &BunyanLine) -> Option<BunyanLogParseError>
 }
 
 impl Logger for BunyanLine {
-    fn write_long_format<W: Write>(&self, writer: &mut W, _output_config: LoggerOutputConfig) -> ParseResult {
+    fn write_long_format<W: Write>(
+        &self,
+        writer: &mut W,
+        _output_config: LoggerOutputConfig,
+    ) -> ParseResult {
         if let Some(err) = validate_log_data_structure(&self) {
             return Err(err);
         }

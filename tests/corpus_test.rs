@@ -1,13 +1,14 @@
 extern crate bunyan_view;
 extern crate bytes;
-#[macro_use] extern crate pretty_assertions;
+#[macro_use]
+extern crate pretty_assertions;
 
 use std::fs::File;
 use std::io::BufReader;
 use std::io::Read;
 
-use bytes::BufMut;
 use bunyan_view::LoggerOutputConfig;
+use bytes::BufMut;
 
 fn assert_equals_to_file(filename: &str) {
     let format = bunyan_view::LogFormat::Long;
@@ -19,18 +20,22 @@ fn assert_equals_to_file(filename: &str) {
     let mut expected_file = File::open(expected_filename).expect("file not found");
 
     let mut expected = String::new();
-    expected_file.read_to_string(&mut expected)
-        .expect(&["There was a problem opening the expectation file: ", expected_filename].concat());
+    expected_file.read_to_string(&mut expected).expect(
+        &[
+            "There was a problem opening the expectation file: ",
+            expected_filename,
+        ]
+        .concat(),
+    );
 
     let output_config = LoggerOutputConfig {
         indent: 4,
         is_debug: false,
         is_strict: false,
-        level: None
+        level: None,
     };
 
-    bunyan_view::write_bunyan_output(&mut writer, Box::new(reader), &format,
-                                     output_config);
+    bunyan_view::write_bunyan_output(&mut writer, Box::new(reader), &format, output_config);
     let actual_bytes: Vec<u8> = writer.into_inner();
     let actual = std::str::from_utf8(&actual_bytes).expect("Couldn't convert bytes");
 
@@ -43,8 +48,10 @@ fn assert_equals_to_file(filename: &str) {
     // Compare line by line in order to get better visibility if there is a difference
     for (expected_line, actual_line) in zipped_lines {
         pos += 1;
-        assert_eq!(format!("{}: {}", pos, actual_line),
-                   format!("{}: {}", pos, expected_line));
+        assert_eq!(
+            format!("{}: {}", pos, actual_line),
+            format!("{}: {}", pos, expected_line)
+        );
     }
 
     // Lastly, compare the entire output to make sure we are completely meeting the expectation

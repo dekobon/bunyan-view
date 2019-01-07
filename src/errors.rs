@@ -4,12 +4,16 @@ use std::num::ParseIntError;
 
 #[derive(Debug, Clone)]
 pub struct LogLevelParseError {
-    pub input: String
+    pub input: String,
 }
 
 impl fmt::Display for LogLevelParseError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Unable to parse log level from input value: {}", self.description())
+        write!(
+            f,
+            "Unable to parse log level from input value: {}",
+            self.description()
+        )
     }
 }
 
@@ -25,11 +29,14 @@ impl StdError for LogLevelParseError {
 
 #[derive(Debug, Clone)]
 pub struct BunyanLogParseError {
-    msg: String
+    msg: String,
 }
 
 impl BunyanLogParseError {
-    pub fn new<S>(msg: S) -> BunyanLogParseError where S: Into<String> {
+    pub fn new<S>(msg: S) -> BunyanLogParseError
+    where
+        S: Into<String>,
+    {
         BunyanLogParseError { msg: msg.into() }
     }
 }
@@ -70,7 +77,7 @@ impl StdError for ParseIntFromJsonError {
         match *self {
             ParseIntFromJsonError::Structural(ref e) => e.description(),
             // This already impls `Error`, so defer to its own implementation.
-            ParseIntFromJsonError::Numeric(ref e) => e.description()
+            ParseIntFromJsonError::Numeric(ref e) => e.description(),
         }
     }
 
@@ -129,7 +136,7 @@ impl fmt::Debug for Error {
             .field("line", &self.inner.line)
             .field("line_no", &self.inner.line_no)
             .field("column", &self.inner.column)
-        .finish()
+            .finish()
     }
 }
 
@@ -162,7 +169,7 @@ impl StdError for Error {
 #[derive(Debug)]
 pub enum Kind {
     BunyanLogParse(BunyanLogParseError),
-    Json(::serde_json::Error)
+    Json(::serde_json::Error),
 }
 
 impl From<BunyanLogParseError> for Kind {

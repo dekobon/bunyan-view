@@ -1,6 +1,6 @@
-use std::io::{Write, Error};
-use std::fmt::Arguments;
 use crate::BASE_INDENT_SIZE;
+use std::fmt::Arguments;
+use std::io::{Error, Write};
 
 /// Textual divider between log sections
 const DIVIDER: &str = "--\n";
@@ -11,7 +11,7 @@ const DIVIDER: &str = "--\n";
 pub struct DividerWriter<'a, W: Write> {
     inner: &'a mut W,
     pub divider_written: bool,
-    pub has_been_written: bool
+    pub has_been_written: bool,
 }
 
 impl<'a, W: Write> DividerWriter<'a, W> {
@@ -19,7 +19,7 @@ impl<'a, W: Write> DividerWriter<'a, W> {
         DividerWriter {
             inner: inner,
             divider_written: divider_written.clone(),
-            has_been_written: false
+            has_been_written: false,
         }
     }
 
@@ -33,8 +33,12 @@ impl<'a, W: Write> DividerWriter<'a, W> {
     ///
     fn write_divider(&mut self) {
         // "{:indent$}", "", indent = BASE_INDENT_SIZE
-        if let Err(e) = self.inner.write_fmt(format_args!("{:indent$}{}", "", DIVIDER,
-                                                          indent = BASE_INDENT_SIZE)) {
+        if let Err(e) = self.inner.write_fmt(format_args!(
+            "{:indent$}{}",
+            "",
+            DIVIDER,
+            indent = BASE_INDENT_SIZE
+        )) {
             panic!(e);
         }
 

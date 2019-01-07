@@ -1,25 +1,25 @@
 #[macro_use]
 extern crate serde_derive;
+extern crate httpstatus;
 extern crate serde;
 extern crate serde_json;
-extern crate httpstatus;
 
 #[macro_use]
 mod macros;
+mod divider_writer;
 mod errors;
 mod long_format_logger;
-mod divider_writer;
 
-use crate::errors::{LogLevelParseError};
+use crate::errors::LogLevelParseError;
 
 use std::error::Error as StdError;
-use std::io::{BufRead, Write};
 use std::fmt;
+use std::io::{BufRead, Write};
 
-use serde_json::Value;
-use serde_json::map::Map as Map;
+use crate::errors::{Error, Kind, ParseResult};
+use serde_json::map::Map;
 use serde_json::Error as SerdeError;
-use crate::errors::{ParseResult, Kind, Error};
+use serde_json::Value;
 
 /// Default indent size in spaces
 const BASE_INDENT_SIZE: usize = 4;
@@ -32,34 +32,32 @@ pub enum LogLevel {
     WARN,
     ERROR,
     FATAL,
-    OTHER(u16)
+    OTHER(u16),
 }
 
 impl LogLevel {
     #[inline]
     pub fn as_u16(&self) -> u16 {
         match *self {
-            LogLevel::TRACE       => 10,
-            LogLevel::DEBUG       => 20,
-            LogLevel::INFO        => 30,
-            LogLevel::WARN        => 40,
-            LogLevel::ERROR       => 50,
-            LogLevel::FATAL       => 60,
-            LogLevel::OTHER(code) => code
+            LogLevel::TRACE => 10,
+            LogLevel::DEBUG => 20,
+            LogLevel::INFO => 30,
+            LogLevel::WARN => 40,
+            LogLevel::ERROR => 50,
+            LogLevel::FATAL => 60,
+            LogLevel::OTHER(code) => code,
         }
     }
 
     pub fn as_string(&self) -> String {
         match *self {
-            LogLevel::TRACE        => "TRACE".to_string(),
-            LogLevel::DEBUG        => "DEBUG".to_string(),
-            LogLevel::INFO         => "INFO".to_string(),
-            LogLevel::WARN         => "WARN".to_string(),
-            LogLevel::ERROR        => "ERROR".to_string(),
-            LogLevel::FATAL        => "FATAL".to_string(),
-            LogLevel::OTHER(_code)  => {
-                format!("LVL{}", self.as_u16())
-            }
+            LogLevel::TRACE => "TRACE".to_string(),
+            LogLevel::DEBUG => "DEBUG".to_string(),
+            LogLevel::INFO => "INFO".to_string(),
+            LogLevel::WARN => "WARN".to_string(),
+            LogLevel::ERROR => "ERROR".to_string(),
+            LogLevel::FATAL => "FATAL".to_string(),
+            LogLevel::OTHER(_code) => format!("LVL{}", self.as_u16()),
         }
     }
 
@@ -87,7 +85,9 @@ impl LogLevel {
 
             match numeric_string.parse::<u16>() {
                 Ok(code) => Ok(LogLevel::OTHER(code)),
-                Err(_) => Err(LogLevelParseError { input: level_string.to_string() })
+                Err(_) => Err(LogLevelParseError {
+                    input: level_string.to_string(),
+                }),
             }
         }
     }
@@ -102,7 +102,7 @@ impl From<u16> for LogLevel {
             40 => LogLevel::WARN,
             50 => LogLevel::ERROR,
             60 => LogLevel::FATAL,
-            _  => LogLevel::OTHER(code)
+            _ => LogLevel::OTHER(code),
         }
     }
 }
@@ -111,13 +111,9 @@ impl fmt::Display for LogLevel {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         let level = self.as_string();
 
-        let left_spaces = if level.len() > 5 {
-            0
-        } else {
-            5 - level.len()
-        };
+        let left_spaces = if level.len() > 5 { 0 } else { 5 - level.len() };
 
-        write!(f, "{:indent$}{}", "", level, indent=left_spaces)
+        write!(f, "{:indent$}{}", "", level, indent = left_spaces)
     }
 }
 
@@ -133,23 +129,37 @@ pub struct BunyanLine {
     time: String,
     v: Option<u8>,
     #[serde(flatten)]
-    other: Map<String, Value>
+    other: Map<String, Value>,
 }
 
 pub trait Logger {
-    fn write_long_format<W: Write>(&self, writer : &mut W, output_config: LoggerOutputConfig) -> ParseResult;
+    fn write_long_format<W: Write>(
+        &self,
+        writer: &mut W,
+        output_config: LoggerOutputConfig,
+    ) -> ParseResult;
 }
 
 pub enum LogFormat {
-    Long
+    Long,
 }
 
 pub trait LogWriter {
-    fn write_log<W: Write>(&self, writer: &mut W, log: BunyanLine, output_config: LoggerOutputConfig)  -> ParseResult;
+    fn write_log<W: Write>(
+        &self,
+        writer: &mut W,
+        log: BunyanLine,
+        output_config: LoggerOutputConfig,
+    ) -> ParseResult;
 }
 
 impl LogWriter for LogFormat {
-    fn write_log<W: Write>(&self, writer: &mut W, log: BunyanLine, output_config: LoggerOutputConfig) -> ParseResult {
+    fn write_log<W: Write>(
+        &self,
+        writer: &mut W,
+        log: BunyanLine,
+        output_config: LoggerOutputConfig,
+    ) -> ParseResult {
         log.write_long_format(writer, output_config)
     }
 }
@@ -159,11 +169,12 @@ pub struct LoggerOutputConfig {
     pub indent: usize,
     pub is_strict: bool,
     pub is_debug: bool,
-    pub level: Option<u16>
+    pub level: Option<u16>,
 }
 
 fn handle_error<W>(writer: &mut W, error: Error, output_config: &LoggerOutputConfig)
-    where W: Write
+where
+    W: Write,
 {
     if !output_config.is_strict || output_config.is_debug {
         let orig_msg = error.to_string().clone();
@@ -172,12 +183,18 @@ fn handle_error<W>(writer: &mut W, error: Error, output_config: &LoggerOutputCon
 
         let msg = match split.next() {
             Some(first) => first,
-            None => error.description()
+            None => error.description(),
         };
 
         if output_config.is_debug {
             if let Some(column) = error.column() {
-                wln!(std::io::stderr(), "{} on line {} column: {}", msg, error.line_no(), column);
+                wln!(
+                    std::io::stderr(),
+                    "{} on line {} column: {}",
+                    msg,
+                    error.line_no(),
+                    column
+                );
             } else {
                 wln!(std::io::stderr(), "{} on line {}", msg, error.line_no());
             }
@@ -189,57 +206,61 @@ fn handle_error<W>(writer: &mut W, error: Error, output_config: &LoggerOutputCon
     }
 }
 
-pub fn write_bunyan_output<W, R>(writer: &mut W, reader: R, format: &LogFormat,
-                                 output_config: LoggerOutputConfig)
-    where W: Write, R: BufRead
+pub fn write_bunyan_output<W, R>(
+    writer: &mut W,
+    reader: R,
+    format: &LogFormat,
+    output_config: LoggerOutputConfig,
+) where
+    W: Write,
+    R: BufRead,
 {
     let mut line_no: usize = 0;
 
-    reader.lines()
-        .for_each(|raw_line| {
-            match raw_line {
-                Ok(line) => {
-                    line_no += 1;
+    reader.lines().for_each(|raw_line| {
+        match raw_line {
+            Ok(line) => {
+                line_no += 1;
 
-                    // Don't process empty lines because the output isn't useful to our users
-                    if !output_config.is_strict && line.trim().is_empty() {
-                        wln!(writer);
-                    } else {
-                        let json_result: Result<BunyanLine, SerdeError> = serde_json::from_str(&line);
-                        match json_result {
-                            Ok(log) => {
-                                let write_log: bool = if let Some(output_level) = output_config.level {
-                                    output_level <= log.level
-                                } else {
-                                    true
-                                };
+                // Don't process empty lines because the output isn't useful to our users
+                if !output_config.is_strict && line.trim().is_empty() {
+                    wln!(writer);
+                } else {
+                    let json_result: Result<BunyanLine, SerdeError> = serde_json::from_str(&line);
+                    match json_result {
+                        Ok(log) => {
+                            let write_log: bool = if let Some(output_level) = output_config.level {
+                                output_level <= log.level
+                            } else {
+                                true
+                            };
 
-                                if write_log {
-                                    let result = format.write_log(writer, log, output_config.clone());
-                                    match result {
-                                        Err(e) => {
-                                            let kind = Kind::from(e);
-                                            let error = Error::new(kind, line, line_no, None);
-                                            handle_error(writer, error, &output_config);
-                                        },
-                                        Ok(_) => ()
+                            if write_log {
+                                let result = format.write_log(writer, log, output_config.clone());
+                                match result {
+                                    Err(e) => {
+                                        let kind = Kind::from(e);
+                                        let error = Error::new(kind, line, line_no, None);
+                                        handle_error(writer, error, &output_config);
                                     }
+                                    Ok(_) => (),
                                 }
-                            },
-                            Err(raw_error) => {
-                                let column: usize = raw_error.column().clone();
-                                let kind = Kind::from(raw_error);
-                                let error = Error::new(kind, line, line_no, Some(column));
-                                handle_error(writer, error, &output_config);
                             }
+                        }
+                        Err(raw_error) => {
+                            let column: usize = raw_error.column().clone();
+                            let kind = Kind::from(raw_error);
+                            let error = Error::new(kind, line, line_no, Some(column));
+                            handle_error(writer, error, &output_config);
                         }
                     }
                 }
-                Err(e) => {
-                    panic!(e);
-                }
             }
-        });
+            Err(e) => {
+                panic!(e);
+            }
+        }
+    });
 }
 
 #[cfg(test)]
@@ -248,14 +269,23 @@ mod tests {
 
     #[test]
     fn can_parse_to_known_log_level() {
-        let levels = vec![LogLevel::TRACE, LogLevel::DEBUG, LogLevel::INFO,
-                          LogLevel::ERROR, LogLevel::FATAL];
+        let levels = vec![
+            LogLevel::TRACE,
+            LogLevel::DEBUG,
+            LogLevel::INFO,
+            LogLevel::ERROR,
+            LogLevel::FATAL,
+        ];
         assert_log_levels_parse(levels);
     }
 
     #[test]
     fn can_parse_custom_level_log_level() {
-        let levels = vec![LogLevel::OTHER(0), LogLevel::OTHER(100), LogLevel::OTHER(1001)];
+        let levels = vec![
+            LogLevel::OTHER(0),
+            LogLevel::OTHER(100),
+            LogLevel::OTHER(1001),
+        ];
         assert_log_levels_parse(levels);
     }
 
@@ -269,13 +299,13 @@ mod tests {
             // test parsing uppercase
             match LogLevel::parse(level_string) {
                 Ok(level) => assert_eq!(level, test_level, "Unable to parse input to log level"),
-                Err(err) => panic!(err)
+                Err(err) => panic!(err),
             }
 
             // test parsing lowercase
             match LogLevel::parse(lower_case_level_string) {
                 Ok(level) => assert_eq!(level, test_level, "Unable to parse input to log level"),
-                Err(err) => panic!(err)
+                Err(err) => panic!(err),
             }
         }
     }

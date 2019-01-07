@@ -4,11 +4,11 @@ extern crate clap;
 extern crate bunyan_view;
 extern crate flate2;
 
-use std::fs::File;
-use std::io::{BufReader, BufRead};
-use flate2::read::GzDecoder;
 use bunyan_view::{LogFormat, LogLevel, LoggerOutputConfig};
-use clap::{Arg, App, AppSettings};
+use clap::{App, AppSettings, Arg};
+use flate2::read::GzDecoder;
+use std::fs::File;
+use std::io::{BufRead, BufReader};
 
 fn main() {
     let matches = App::new("Bunyan View")
@@ -44,23 +44,21 @@ fn main() {
         .get_matches();
 
     let level: Option<u16> = match matches.value_of("level") {
-        Some(level_string) => {
-            match LogLevel::parse(level_string) {
-                Ok(level) => Some(level.as_u16()),
-                Err(e) => {
-                    eprintln!("{}: {}", e, level_string);
-                    std::process::exit(1);
-                }
+        Some(level_string) => match LogLevel::parse(level_string) {
+            Ok(level) => Some(level.as_u16()),
+            Err(e) => {
+                eprintln!("{}: {}", e, level_string);
+                std::process::exit(1);
             }
-        }
-        None => None
+        },
+        None => None,
     };
 
     let output_config = LoggerOutputConfig {
         indent: 4,
         is_strict: matches.is_present("strict"),
         is_debug: matches.is_present("debug"),
-        level
+        level,
     };
 
     match matches.values_of("FILE") {
@@ -69,7 +67,7 @@ fn main() {
                 let file_result = File::open(filename);
 
                 match file_result {
-                    Ok(_) => {},
+                    Ok(_) => {}
                     Err(e) => {
                         eprintln!("{}: {}", e, filename);
                         std::process::exit(1);
@@ -84,14 +82,22 @@ fn main() {
                     Box::new(BufReader::new(file))
                 };
 
-                bunyan_view::write_bunyan_output(&mut std::io::stdout(), reader,
-                                                 &LogFormat::Long, output_config.clone());
+                bunyan_view::write_bunyan_output(
+                    &mut std::io::stdout(),
+                    reader,
+                    &LogFormat::Long,
+                    output_config.clone(),
+                );
             }
-        },
+        }
         None => {
             let reader = Box::new(BufReader::new(std::io::stdin()));
-            bunyan_view::write_bunyan_output(&mut std::io::stdout(), reader,
-                                             &LogFormat::Long, output_config);
+            bunyan_view::write_bunyan_output(
+                &mut std::io::stdout(),
+                reader,
+                &LogFormat::Long,
+                output_config,
+            );
         }
     }
 }
