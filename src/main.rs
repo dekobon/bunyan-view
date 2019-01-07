@@ -86,7 +86,7 @@ fn main() {
                     &mut std::io::stdout(),
                     reader,
                     &LogFormat::Long,
-                    output_config.clone(),
+                    &output_config,
                 );
             }
         }
@@ -96,7 +96,7 @@ fn main() {
                 &mut std::io::stdout(),
                 reader,
                 &LogFormat::Long,
-                output_config,
+                &output_config,
             );
         }
     }
