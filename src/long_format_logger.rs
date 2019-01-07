@@ -198,7 +198,7 @@ fn write_all_extra_params<W: Write>(writer: &mut W, other: &mut Map<String, Valu
         let node = node_option.unwrap();
 
         // Display strings, numbers and null values, as-is
-        if caller_option.is_some() && (node.is_string() || node.is_number() || node.is_null()) {
+        if caller_option.is_some() && (node.is_string() || node.is_number() || node.is_null() || node.is_boolean()) {
             write_formatting(writer, is_first);
             w!(writer, "{}={}", caller_option.unwrap(), quoteify(node));
             return;
@@ -277,14 +277,9 @@ fn write_all_extra_params<W: Write>(writer: &mut W, other: &mut Map<String, Valu
                             &|k: &str | CLIENT_RES_RESERVED.contains(&k));
 
     // ERROR INFORMATION [err]
-    if let Some(err_record) = other.get("err") {
-        /* Support boolean, null and object types for the [err] record to maintain parity with
-           node bunyan */
-
-        write_params_for_object(writer, Some("err"), &mut is_first,
-                                Some(err_record), details,
-                                &|k: &str | ERR_RESERVED.contains(&k));
-    }
+    write_params_for_object(writer, Some("err"), &mut is_first,
+                            other.get("err"), details,
+                            &|k: &str | ERR_RESERVED.contains(&k));
 
     if !is_first {
         w!(writer, ")");
