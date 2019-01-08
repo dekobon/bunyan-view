@@ -15,6 +15,7 @@ use crate::errors::LogLevelParseError;
 use std::error::Error as StdError;
 use std::fmt;
 use std::io::{BufRead, Write};
+use std::borrow::Cow;
 
 use crate::errors::{Error, Kind, ParseResult};
 use serde_json::map::Map;
@@ -49,15 +50,15 @@ impl LogLevel {
         }
     }
 
-    pub fn as_string(&self) -> String {
+    pub fn as_string(&self) -> Cow<'static, str> {
         match *self {
-            LogLevel::TRACE => "TRACE".to_string(),
-            LogLevel::DEBUG => "DEBUG".to_string(),
-            LogLevel::INFO => "INFO".to_string(),
-            LogLevel::WARN => "WARN".to_string(),
-            LogLevel::ERROR => "ERROR".to_string(),
-            LogLevel::FATAL => "FATAL".to_string(),
-            LogLevel::OTHER(_code) => format!("LVL{}", self.as_u16()),
+            LogLevel::TRACE => "TRACE".into(),
+            LogLevel::DEBUG => "DEBUG".into(),
+            LogLevel::INFO => "INFO".into(),
+            LogLevel::WARN => "WARN".into(),
+            LogLevel::ERROR => "ERROR".into(),
+            LogLevel::FATAL => "FATAL".into(),
+            LogLevel::OTHER(_code) => format!("LVL{}", self.as_u16()).into(),
         }
     }
 
