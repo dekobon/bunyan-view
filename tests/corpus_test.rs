@@ -35,7 +35,7 @@ fn assert_equals_to_file(filename: &str) {
         level: None,
     };
 
-    bunyan_view::write_bunyan_output(&mut writer, Box::new(reader), &format, &output_config);
+    bunyan_view::write_bunyan_output(&mut writer, reader, &format, &output_config);
     let actual_bytes: Vec<u8> = writer.into_inner();
     let actual = std::str::from_utf8(&actual_bytes).expect("Couldn't convert bytes");
 
