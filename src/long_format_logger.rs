@@ -963,7 +963,7 @@ impl Logger for BunyanLine {
     fn write_long_format<W: Write>(
         &self,
         writer: &mut W,
-        _output_config: LoggerOutputConfig,
+        _output_config: &LoggerOutputConfig,
     ) -> ParseResult {
         if let Some(err) = validate_log_data_structure(&self) {
             return Err(err);

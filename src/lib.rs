@@ -132,7 +132,7 @@ pub trait Logger {
     fn write_long_format<W: Write>(
         &self,
         writer: &mut W,
-        output_config: LoggerOutputConfig,
+        output_config: &LoggerOutputConfig,
     ) -> ParseResult;
 }
 
@@ -145,7 +145,7 @@ pub trait LogWriter {
         &self,
         writer: &mut W,
         log: BunyanLine,
-        output_config: LoggerOutputConfig,
+        output_config: &LoggerOutputConfig,
     ) -> ParseResult;
 }
 
@@ -154,7 +154,7 @@ impl LogWriter for LogFormat {
         &self,
         writer: &mut W,
         log: BunyanLine,
-        output_config: LoggerOutputConfig,
+        output_config: &LoggerOutputConfig,
     ) -> ParseResult {
         log.write_long_format(writer, output_config)
     }
@@ -173,7 +173,7 @@ where
     W: Write,
 {
     if !output_config.is_strict || output_config.is_debug {
-        let orig_msg = error.to_string().clone();
+        let orig_msg = error.to_string();
 
         let mut split = orig_msg.split(" line ");
 
@@ -225,14 +225,14 @@ pub fn write_bunyan_output<W, R>(
                     let json_result: Result<BunyanLine, SerdeError> = serde_json::from_str(&line);
                     match json_result {
                         Ok(log) => {
-                            let write_log: bool = if let Some(output_level) = output_config.level {
+                            let write_log = if let Some(output_level) = output_config.level {
                                 output_level <= log.level
                             } else {
                                 true
                             };
 
                             if write_log {
-                                let result = format.write_log(writer, log, output_config.clone());
+                                let result = format.write_log(writer, log, output_config);
                                 if let Err(e) = result {
                                     let kind = Kind::from(e);
                                     let error = Error::new(kind, line, line_no, None);
