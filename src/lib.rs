@@ -15,6 +15,7 @@ use crate::errors::LogLevelParseError;
 use std::error::Error as StdError;
 use std::fmt;
 use std::io::{BufRead, Write};
+use std::borrow::Cow;
 
 use crate::errors::{Error, Kind, ParseResult};
 use serde_json::map::Map;
@@ -49,46 +50,41 @@ impl LogLevel {
         }
     }
 
-    pub fn as_string(&self) -> String {
+    pub fn as_string(&self) -> Cow<'static, str> {
         match *self {
-            LogLevel::TRACE => "TRACE".to_string(),
-            LogLevel::DEBUG => "DEBUG".to_string(),
-            LogLevel::INFO => "INFO".to_string(),
-            LogLevel::WARN => "WARN".to_string(),
-            LogLevel::ERROR => "ERROR".to_string(),
-            LogLevel::FATAL => "FATAL".to_string(),
-            LogLevel::OTHER(_code) => format!("LVL{}", self.as_u16()),
+            LogLevel::TRACE => "TRACE".into(),
+            LogLevel::DEBUG => "DEBUG".into(),
+            LogLevel::INFO => "INFO".into(),
+            LogLevel::WARN => "WARN".into(),
+            LogLevel::ERROR => "ERROR".into(),
+            LogLevel::FATAL => "FATAL".into(),
+            LogLevel::OTHER(_code) => format!("LVL{}", self.as_u16()).into(),
         }
     }
 
     pub fn parse<S: Into<String>>(level: S) -> Result<LogLevel, LogLevelParseError> {
-        let level_string: String = level.into();
+        let mut level = level.into();
+        level.make_ascii_uppercase();
+        match level.as_ref() {
+            "TRACE" => Ok(LogLevel::TRACE),
+            "DEBUG" => Ok(LogLevel::DEBUG),
+            "INFO" => Ok(LogLevel::INFO),
+            "WARN" => Ok(LogLevel::WARN),
+            "ERROR" => Ok(LogLevel::ERROR),
+            "FATAL" => Ok(LogLevel::FATAL),
+            _  => {
+                let numeric_string = if level.starts_with("LVL") {
+                    &level[3..]
+                } else {
+                    &level
+                };
 
-        if level_string.eq_ignore_ascii_case("TRACE") {
-            Ok(LogLevel::TRACE)
-        } else if level_string.eq_ignore_ascii_case("DEBUG") {
-            Ok(LogLevel::DEBUG)
-        } else if level_string.eq_ignore_ascii_case("INFO") {
-            Ok(LogLevel::INFO)
-        } else if level_string.eq_ignore_ascii_case("WARN") {
-            Ok(LogLevel::WARN)
-        } else if level_string.eq_ignore_ascii_case("ERROR") {
-            Ok(LogLevel::ERROR)
-        } else if level_string.eq_ignore_ascii_case("FATAL") {
-            Ok(LogLevel::FATAL)
-        } else {
-            let numeric_string = if level_string.to_ascii_uppercase().starts_with("LVL") {
-                &level_string[3..]
-            } else {
-                level_string.as_str()
-            };
-
-            match numeric_string.parse::<u16>() {
-                Ok(code) => Ok(LogLevel::OTHER(code)),
-                Err(_) => Err(LogLevelParseError {
-                    input: level_string.to_string(),
-                }),
+                match numeric_string.parse::<u16>() {
+                    Ok(code) => Ok(LogLevel::OTHER(code)),
+                    Err(_) => Err(LogLevelParseError::from(level)),
+                }
             }
+
         }
     }
 }
@@ -136,7 +132,7 @@ pub trait Logger {
     fn write_long_format<W: Write>(
         &self,
         writer: &mut W,
-        output_config: LoggerOutputConfig,
+        output_config: &LoggerOutputConfig,
     ) -> ParseResult;
 }
 
@@ -149,7 +145,7 @@ pub trait LogWriter {
         &self,
         writer: &mut W,
         log: BunyanLine,
-        output_config: LoggerOutputConfig,
+        output_config: &LoggerOutputConfig,
     ) -> ParseResult;
 }
 
@@ -158,7 +154,7 @@ impl LogWriter for LogFormat {
         &self,
         writer: &mut W,
         log: BunyanLine,
-        output_config: LoggerOutputConfig,
+        output_config: &LoggerOutputConfig,
     ) -> ParseResult {
         log.write_long_format(writer, output_config)
     }
@@ -177,7 +173,7 @@ where
     W: Write,
 {
     if !output_config.is_strict || output_config.is_debug {
-        let orig_msg = error.to_string().clone();
+        let orig_msg = error.to_string();
 
         let mut split = orig_msg.split(" line ");
 
@@ -229,14 +225,14 @@ pub fn write_bunyan_output<W, R>(
                     let json_result: Result<BunyanLine, SerdeError> = serde_json::from_str(&line);
                     match json_result {
                         Ok(log) => {
-                            let write_log: bool = if let Some(output_level) = output_config.level {
+                            let write_log = if let Some(output_level) = output_config.level {
                                 output_level <= log.level
                             } else {
                                 true
                             };
 
                             if write_log {
-                                let result = format.write_log(writer, log, output_config.clone());
+                                let result = format.write_log(writer, log, output_config);
                                 if let Err(e) = result {
                                     let kind = Kind::from(e);
                                     let error = Error::new(kind, line, line_no, None);
