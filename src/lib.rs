@@ -3,6 +3,7 @@ extern crate serde_derive;
 extern crate httpstatus;
 extern crate serde;
 extern crate serde_json;
+extern crate colored;
 
 #[macro_use]
 mod macros;
@@ -21,6 +22,7 @@ use crate::errors::{Error, Kind, ParseResult};
 use serde_json::map::Map;
 use serde_json::Error as SerdeError;
 use serde_json::Value;
+use colored::*;
 
 /// Default indent size in spaces
 const BASE_INDENT_SIZE: usize = 4;
@@ -53,11 +55,11 @@ impl LogLevel {
     pub fn as_string(&self) -> Cow<'static, str> {
         match *self {
             LogLevel::TRACE => "TRACE".into(),
-            LogLevel::DEBUG => "DEBUG".into(),
-            LogLevel::INFO => "INFO".into(),
-            LogLevel::WARN => "WARN".into(),
-            LogLevel::ERROR => "ERROR".into(),
-            LogLevel::FATAL => "FATAL".into(),
+            LogLevel::DEBUG => "DEBUG".yellow().to_string().into(),
+            LogLevel::INFO => "INFO".cyan().to_string().into(),
+            LogLevel::WARN => "WARN".magenta().to_string().into(),
+            LogLevel::ERROR => "ERROR".red().to_string().into(),
+            LogLevel::FATAL => "FATAL".reverse().to_string().into(),
             LogLevel::OTHER(_code) => format!("LVL{}", self.as_u16()).into(),
         }
     }

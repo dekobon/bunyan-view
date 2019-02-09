@@ -5,7 +5,12 @@ authors = ["Elijah Zupancic <elijah@zupancic.name>"]
 edition = "2018"
 
 [features]
+# this preserves the ordering of json
 default = ["serde_json/preserve_order"]
+
+# this effectively enable the feature `no-color` of colored when testing with
+# `cargo test --feature dumb_terminal`
+dumb_terminal = ["colored/no-color"]
 
 [lib]
 name = "bunyan_view"
@@ -22,6 +27,7 @@ serde_json = "1.0.33"
 serde_derive = "1.0.80"
 httpstatus = "0.1.0"
 flate2 = "1.0.5"
+colored = "^1.7"
 
 [dev-dependencies]
 bytes = "0.4.11"

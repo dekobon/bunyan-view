@@ -10,6 +10,8 @@ use httpstatus::StatusCode;
 use serde_json::map::Map;
 use serde_json::Value;
 
+use colored::*;
+
 /// Maximum characters for a string value in the extra parameters section
 const LONG_LINE_SIZE: usize = 50;
 /// Reserved keywords for requests records
@@ -63,17 +65,19 @@ fn write_src<W: Write>(writer: &mut W, other: &mut Map<String, Value>) {
             Value::Object(map) => {
                 // We only display the src information if [src.file] is present
                 if let Some(ref file) = map.get("file") {
-                    w!(writer, " ({}", string_or_value!(file));
+                    w!(writer, "{}", " (".green());
+                    w!(writer, "{}", string_or_value!(file).green());
 
                     if let Some(ref line) = map.get("line") {
-                        w!(writer, ":{}", string_or_value!(line));
+                        w!(writer, ":{}", string_or_value!(line).green());
                     }
 
                     if let Some(ref func) = map.get("func") {
-                        w!(writer, " in {}", string_or_value!(func));
+                        w!(writer, "{}", " in ");
+                        w!(writer, "{}", string_or_value!(func).bright_green());
                     }
 
-                    w!(writer, ")");
+                    w!(writer, "{}", ")".green());
                 }
             }
             Value::String(text) => w!(writer, " ({})", text),
@@ -971,8 +975,11 @@ impl Logger for BunyanLine {
 
         let log_level: LogLevel = self.level.into();
 
-        // Write the [time], log [level] and app [name]
-        w!(writer, "[{}] {}: {}/", self.time, log_level, self.name);
+        // Write the [time]
+        w!(writer, "{}{}{}", "[".blue(), self.time.bright_white(), "]".blue());
+
+        // write the log [level] and app [name]
+        w!(writer, " {}: {}/", log_level, self.name);
 
         // If present, write the [component]
         if let Some(ref component) = self.component {
@@ -995,7 +1002,7 @@ impl Logger for BunyanLine {
             details.push(indented_msg)
         // Write the log message [msg] as is because there is no line break
         } else if !self.msg.is_empty() {
-            w!(writer, ": {}", self.msg);
+            w!(writer, ": {}", self.msg.cyan());
         } else {
             w!(writer, ":");
         }

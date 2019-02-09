@@ -36,6 +36,16 @@ fn main() {
             .short("l")
             .takes_value(true)
             .required(false))
+        .arg(Arg::with_name("color")
+            .help("Force coloring even if terminal doesn't support it")
+            .long("color")
+            .takes_value(false)
+            .required(false))
+        .arg(Arg::with_name("no-color")
+            .help("Force no coloring (e.g. terminal doesn't support it)")
+            .long("no-color")
+            .takes_value(false)
+            .required(false))
         .arg(Arg::with_name("FILE")
             .help("Sets the input file(s) to use")
             .required(false)
@@ -60,6 +70,17 @@ fn main() {
         is_debug: matches.is_present("debug"),
         level,
     };
+
+    if matches.is_present("color") && matches.is_present("no-color") {
+        eprintln!("ERROR: Contradictory color settings: use --no-color OR --color");
+        std::process::exit(1);
+    }
+
+    if matches.is_present("no-color") {
+        colored::control::set_override(false);
+    } else if matches.is_present("color") {
+        colored::control::set_override(true);
+    }
 
     match matches.values_of("FILE") {
         Some(filenames) => {
