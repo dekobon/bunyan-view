@@ -4,8 +4,9 @@ macro_rules! w {
 
         match result {
             Ok(_) => {},
-            Err(e) => {
-                panic!(e);
+            Err(_) => {
+                // Exit without message because this is likely a SIGPIPE
+                ::std::process::exit(1);
             }
         }
     }}
@@ -22,8 +23,9 @@ macro_rules! wln {
         let result = $dst.write_fmt(format_args!($($arg)*));
         match result {
             Ok(_) => {},
-            Err(e) => {
-                panic!(e);
+            Err(_) => {
+                // Exit without message because this is likely a SIGPIPE
+                ::std::process::exit(1);
             }
         };
         w!($dst, "\n");
