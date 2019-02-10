@@ -5,20 +5,20 @@ extern crate bunyan_view;
 extern crate flate2;
 
 use bunyan_view::{LogFormat, LogLevel, LoggerOutputConfig};
-use clap::{App, AppSettings, Arg};
+use clap::{App, AppSettings, ArgMatches, Arg};
 use flate2::read::GzDecoder;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
 fn main() {
     let matches = App::new("Bunyan View")
-        .setting(AppSettings::ColoredHelp)
         .setting(AppSettings::ColorAuto)
         .setting(AppSettings::DeriveDisplayOrder)
         .setting(AppSettings::TrailingVarArg)
         .version(crate_version!())
         .author(crate_authors!())
         .about("Displays bunyan format log files to the console")
+        .after_help("Environment Variables:\n  BUNYAN_NO_COLOR    Set to a non-empty value to force no output coloring. See \"--no-color\".")
         .arg(Arg::with_name("debug")
             .help("Display deserialization errors and expectation mismatches to STDERR.")
             .long("debug")
@@ -71,16 +71,7 @@ fn main() {
         level,
     };
 
-    if matches.is_present("color") && matches.is_present("no-color") {
-        eprintln!("ERROR: Contradictory color settings: use --no-color OR --color");
-        std::process::exit(1);
-    }
-
-    if matches.is_present("no-color") {
-        colored::control::set_override(false);
-    } else if matches.is_present("color") {
-        colored::control::set_override(true);
-    }
+    apply_color_settings(&matches);
 
     match matches.values_of("FILE") {
         Some(filenames) => {
@@ -120,5 +111,24 @@ fn main() {
                 &output_config,
             );
         }
+    }
+}
+
+/// Reads the CLI parameters and environment variables set upon execution and selectively
+/// enables or disables color support
+///
+/// # Arguments
+/// * `matches` - CLAP flags data structure
+fn apply_color_settings(matches: &ArgMatches) {
+    if matches.is_present("color") && matches.is_present("no-color") {
+        eprintln!("ERROR: Contradictory color settings: use --no-color OR --color");
+        std::process::exit(1);
+    }
+
+    // If BUNYAN_NO_COLOR is set, we intentionally ignore the --color setting
+    if matches.is_present("no-color") || ::std::env::var_os("BUNYAN_NO_COLOR").is_some() {
+        colored::control::set_override(false);
+    } else if matches.is_present("color") {
+        colored::control::set_override(true);
     }
 }

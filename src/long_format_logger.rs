@@ -386,7 +386,7 @@ fn write_req<W: Write>(writer: &mut W, key: &str, other: &mut Map<String, Value>
 
         if let Some(method) = req_map.remove("method") {
             if let Some(method_text) = method.as_str() {
-                w!(writer, "{} ", method_text);
+                w!(writer, "{} ", method_text.yellow());
             } else {
                 return Err(BunyanLogParseError::new(format!(
                     "[{}.method] is not a JSON string",
@@ -402,7 +402,7 @@ fn write_req<W: Write>(writer: &mut W, key: &str, other: &mut Map<String, Value>
 
         if let Some(url) = req_map.remove("url") {
             if let Some(url_text) = url.as_str() {
-                w!(writer, "{} ", url_text);
+                w!(writer, "{} ", url_text.bright_blue());
             } else {
                 return Err(BunyanLogParseError::new(format!(
                     "[{}.url] is not a JSON string",
@@ -612,16 +612,33 @@ fn write_res<W: Write>(writer: &mut W, key: &str, other: &mut Map<String, Value>
 
         if let Some(code) = numeric_status_code {
             let http_version = option_http_version.unwrap_or(DEFAULT_HTTP_VERSION);
+            let http_status = format!("HTTP/{}", http_version);
+
             w!(
                 writer,
-                "{:indent$}HTTP/{}",
+                "{:indent$}{}",
                 "",
-                http_version,
+                http_status.cyan(),
                 indent = BASE_INDENT_SIZE
             );
 
+            let color = if code >= 100 && code <= 199 {
+                "blue"
+            } else if code >= 200 && code <= 299 {
+                "green"
+            } else if code >= 300 && code <= 399 {
+                "magenta"
+            } else if code >= 400 && code <= 499 {
+                "yellow"
+            } else if code >= 500 && code <= 599 {
+                "red"
+            } else {
+                "white"
+            };
+
             let status_code = StatusCode::from(code);
-            w!(writer, " {} {}", code, status_code.reason_phrase());
+            let response_status = format!(" {} {}", code, status_code.reason_phrase());
+            w!(writer, "{}", response_status.color(color));
             wln!(writer);
         }
     }
