@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/dekobon/bunyan-view.svg?branch=master)](https://travis-ci.org/dekobon/bunyan-view)
+
 # Bunyan Viewer
 
 This project is a rewrite of the [node-bunyan](https://github.com/trentm/node-bunyan/) bunyan format 
