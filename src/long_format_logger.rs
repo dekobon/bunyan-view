@@ -107,7 +107,8 @@ fn write_all_extra_params<W: Write>(
     /// * `caller_option` - Optional name of top-level record (eg `req`, `res`, `err`, etc)
     ///
     fn detail_pretty_print(key: &str, value: &Value, caller_option: Option<&str>) -> String {
-        let pretty = ::serde_json::to_string_pretty(value).unwrap_or("[malformed]".to_string());
+        let pretty = ::serde_json::to_string_pretty(value)
+            .unwrap_or_else(|_| "[malformed]".to_string());
 
         match caller_option {
             Some(caller) => format!("{}.{}: {}", caller, key, pretty),
@@ -486,7 +487,8 @@ fn write_req<W: Write>(writer: &mut W, key: &str, other: &mut Map<String, Value>
     if let Some(body) = req_map.remove("body") {
         if let Some(body_map) = body.as_object() {
             let pretty =
-                ::serde_json::to_string_pretty(&body_map).unwrap_or("[malformed]".to_string());
+                ::serde_json::to_string_pretty(&body_map)
+                    .unwrap_or_else(|_| "[malformed]".to_string());
             for line in pretty.lines() {
                 wln!(writer, "{:indent$}{}", "", line, indent = BASE_INDENT_SIZE);
             }
@@ -784,7 +786,8 @@ fn write_err<W: Write>(writer: &mut W, other: &mut Map<String, Value>) {
             }
             _ => {
                 let pretty =
-                    ::serde_json::to_string_pretty(&stack_val).unwrap_or("[malformed]".to_string());
+                    ::serde_json::to_string_pretty(&stack_val)
+                        .unwrap_or_else(|_| "[malformed]".to_string());
                 for line in pretty.lines() {
                     wln!(writer, "{:indent$}{}", "", line, indent = BASE_INDENT_SIZE);
                 }
