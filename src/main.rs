@@ -1,16 +1,21 @@
 #[macro_use]
 extern crate clap;
-
 extern crate bunyan_view;
 extern crate flate2;
+extern crate pager;
 
 use bunyan_view::{LogFormat, LogLevel, LoggerOutputConfig};
 use clap::{App, AppSettings, ArgMatches, Arg};
 use flate2::read::GzDecoder;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
+use pager::Pager;
 
 fn main() {
+    let env_var_help = "Environment Variables:
+  BUNYAN_NO_COLOR    Set to a non-empty value to force no output coloring. See \"--no-color\".
+  BUNYAN_NO_PAGER    Disable piping output to a pager. See \"--no-pager\".";
+
     let matches = App::new("Bunyan View")
         .setting(AppSettings::ColorAuto)
         .setting(AppSettings::DeriveDisplayOrder)
@@ -18,7 +23,7 @@ fn main() {
         .version(crate_version!())
         .author(crate_authors!())
         .about("Displays bunyan format log files to the console")
-        .after_help("Environment Variables:\n  BUNYAN_NO_COLOR    Set to a non-empty value to force no output coloring. See \"--no-color\".")
+        .after_help(env_var_help)
         .arg(Arg::with_name("debug")
             .help("Display deserialization errors and expectation mismatches to STDERR.")
             .long("debug")
@@ -35,6 +40,16 @@ fn main() {
             .long("level")
             .short("l")
             .takes_value(true)
+            .required(false))
+        .arg(Arg::with_name("pager")
+            .help("Pipe output into `less` (or $PAGER if set), if stdout is a TTY. This overrides $BUNYAN_NO_PAGER.")
+            .long("pager")
+            .takes_value(false)
+            .required(false))
+        .arg(Arg::with_name("no-pager")
+            .help("Do not pipe output into a pager.")
+            .long("no-pager")
+            .takes_value(false)
             .required(false))
         .arg(Arg::with_name("color")
             .help("Force coloring even if terminal doesn't support it")
@@ -88,6 +103,9 @@ fn main() {
 
                 let file = file_result.unwrap();
 
+                // We only enable pager support when a file has been directly specified
+                apply_pager_settings(&matches);
+
                 let reader: Box<BufRead> = if filename.ends_with(".gz") {
                     Box::new(BufReader::new(GzDecoder::new(BufReader::new(file))))
                 } else {
@@ -111,6 +129,24 @@ fn main() {
                 &output_config,
             );
         }
+    }
+}
+
+/// Reads the CLI parameters and environment variables set upon execution and selectively
+/// enables or disables pager support
+///
+/// # Arguments
+/// * `matches` - CLAP flags data structure
+fn apply_pager_settings(matches: &ArgMatches) {
+    if matches.is_present("no-pager") && matches.is_present("pager") {
+        eprintln!("ERROR: Contradictory pager settings: use --no-pager OR --pager");
+        std::process::exit(1);
+    }
+
+    // If BUNYAN_NO_PAGER is set, we intentionally ignore the --pager setting
+    // The default setting is to enable the pager if we were provided a file
+    if !matches.is_present("no-pager") && ::std::env::var_os("BUNYAN_NO_PAGER").is_none() {
+        Pager::new().setup();
     }
 }
 
