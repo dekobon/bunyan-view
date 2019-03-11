@@ -4,6 +4,8 @@ extern crate bunyan_view;
 extern crate flate2;
 extern crate pager;
 
+use std::env;
+use std::path::PathBuf;
 use bunyan_view::{LogFormat, LogLevel, LoggerOutputConfig};
 use clap::{App, AppSettings, ArgMatches, Arg};
 use flate2::read::GzDecoder;
@@ -35,6 +37,13 @@ fn main() {
             .long("strict")
             .takes_value(false)
             .required(false))
+        .arg(Arg::with_name("PID")
+            .help("Runtime log snooping (via DTrace, only on supported platforms). Process bunyan:log-* probes from the process with the given PID. Can be used multiple times, or specify all processes with \"*\", or a set of processes whose command & args match a pattern with \"-p NAME\".")
+            .long("pids")
+            .short("p")
+            .takes_value(true)
+            .required(false)
+            .multiple(true))
         .arg(Arg::with_name("level")
             .help("Only show messages at or above the specified level. You can specify level *names* or the internal numeric values.")
             .long("level")
@@ -88,40 +97,44 @@ fn main() {
 
     apply_color_settings(&matches);
 
-    match matches.values_of("FILE") {
-        Some(filenames) => {
-            for filename in filenames {
-                let file_result = File::open(filename);
+    // If no pids or files are specified, we assume STDIN
+    if !matches.is_present("FILE") && !matches.is_present("PID") {
+        let reader = Box::new(BufReader::new(std::io::stdin()));
+        bunyan_view::write_bunyan_output(
+            &mut std::io::stdout(),
+            reader,
+            &LogFormat::Long,
+            &output_config,
+        );
+    }
 
-                match file_result {
-                    Ok(_) => {}
-                    Err(e) => {
-                        eprintln!("{}: {}", e, filename);
-                        std::process::exit(1);
-                    }
+    if let Some(pids) = matches.values_of("PID") {
+
+    }
+
+    if let Some(filenames) = matches.values_of("FILE") {
+        for filename in filenames {
+            let file_result = File::open(filename);
+
+            match file_result {
+                Ok(_) => {}
+                Err(e) => {
+                    eprintln!("{}: {}", e, filename);
+                    std::process::exit(1);
                 }
-
-                let file = file_result.unwrap();
-
-                // We only enable pager support when a file has been directly specified
-                apply_pager_settings(&matches);
-
-                let reader: Box<BufRead> = if filename.ends_with(".gz") {
-                    Box::new(BufReader::new(GzDecoder::new(BufReader::new(file))))
-                } else {
-                    Box::new(BufReader::new(file))
-                };
-
-                bunyan_view::write_bunyan_output(
-                    &mut std::io::stdout(),
-                    reader,
-                    &LogFormat::Long,
-                    &output_config,
-                );
             }
-        }
-        None => {
-            let reader = Box::new(BufReader::new(std::io::stdin()));
+
+            let file = file_result.unwrap();
+
+            // We only enable pager support when a file has been directly specified
+            apply_pager_settings(&matches);
+
+            let reader: Box<BufRead> = if filename.ends_with(".gz") {
+                Box::new(BufReader::new(GzDecoder::new(BufReader::new(file))))
+            } else {
+                Box::new(BufReader::new(file))
+            };
+
             bunyan_view::write_bunyan_output(
                 &mut std::io::stdout(),
                 reader,
@@ -167,4 +180,28 @@ fn apply_color_settings(matches: &ArgMatches) {
     } else if matches.is_present("color") {
         colored::control::set_override(true);
     }
+}
+
+/// Finds the dtrace executable within the system PATH environment variable.
+fn find_dtrace() -> Option<PathBuf> {
+    env::var_os("PATH").and_then(|paths| {
+        env::split_paths(&paths).filter_map(|dir| {
+            let dtrace_path = dir.join("dtrace");
+            if dtrace_path.is_file() {
+                Some(dtrace_path)
+            } else {
+                None
+            }
+        }).next()
+    })
+}
+
+fn spawn_dtrace(pids: clap::Values) {
+    let dtrace_path = find_dtrace();
+    if dtrace_path.is_none() {
+        eprintln!("DTrace could not be found in path");
+        std::process::exit(1);
+    }
+
+    let mut child = std::process::Command::new(dtrace_path.unwrap());
 }
