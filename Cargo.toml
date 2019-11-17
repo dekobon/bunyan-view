@@ -32,4 +32,4 @@ pager = "0.15.0"
 
 [dev-dependencies]
 bytes = "0.4.11"
-pretty_assertions = "0.5.1"
+pretty_assertions = "0.6.1"
