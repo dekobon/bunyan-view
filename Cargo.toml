@@ -21,15 +21,15 @@ name = "bunyan"
 path = "src/main.rs"
 
 [dependencies]
-clap = "2.32.0"
-serde = "1.0.80"
-serde_json = "1.0.33"
-serde_derive = "1.0.80"
+clap = "2.33.0"
+serde = "1.0.102"
+serde_json = "1.0.41"
+serde_derive = "1.0.102"
 httpstatus = "0.1.0"
-flate2 = "1.0.5"
-colored = "1.7.0"
+flate2 = "1.0.13"
+colored = "1.9.0"
 pager = "0.15.0"
 
 [dev-dependencies]
-bytes = "0.4.11"
+bytes = "0.4.12"
 pretty_assertions = "0.6.1"
