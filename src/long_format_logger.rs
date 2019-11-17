@@ -228,7 +228,7 @@ fn write_all_extra_params<W: Write>(
         is_first: &mut bool,
         node_option: Option<&Value>,
         details: &mut Vec<String>,
-        exclude: &Fn(&str) -> bool,
+        exclude: &dyn Fn(&str) -> bool,
     ) {
         if node_option.is_none() {
             return;

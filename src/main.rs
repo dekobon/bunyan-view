@@ -106,7 +106,7 @@ fn main() {
                 // We only enable pager support when a file has been directly specified
                 apply_pager_settings(&matches);
 
-                let reader: Box<BufRead> = if filename.ends_with(".gz") {
+                let reader: Box<dyn BufRead> = if filename.ends_with(".gz") {
                     Box::new(BufReader::new(GzDecoder::new(BufReader::new(file))))
                 } else {
                     Box::new(BufReader::new(file))

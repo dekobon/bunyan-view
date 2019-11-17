@@ -65,8 +65,8 @@ impl LogLevel {
     }
 
     pub fn parse<S: Into<String>>(level: S) -> Result<LogLevel, LogLevelParseError> {
-        let mut level = level.into();
-        level.make_ascii_uppercase();
+        let level = level.into().to_ascii_uppercase();
+
         match level.as_ref() {
             "TRACE" => Ok(LogLevel::TRACE),
             "DEBUG" => Ok(LogLevel::DEBUG),
@@ -83,7 +83,11 @@ impl LogLevel {
 
                 match numeric_string.parse::<u16>() {
                     Ok(code) => Ok(LogLevel::OTHER(code)),
-                    Err(_) => Err(LogLevelParseError::from(level)),
+                    Err(_) => {
+                        // Maybe there is a whitespace issue?
+                        println!("Attempting to parse numeric string: {}", level);
+                        Err(LogLevelParseError::from(level))
+                    },
                 }
             }
 
@@ -289,7 +293,7 @@ mod tests {
             let level_string = test_level.as_string();
             let lower_case_level_string = level_string.to_ascii_lowercase();
 
-            println!("{}", level_string);
+            println!("Attempting to parse string [{}] as log level literal", level_string);
 
             // test parsing uppercase
             match LogLevel::parse(level_string) {

@@ -30,7 +30,7 @@ impl StdError for LogLevelParseError {
         "Unable to parse log level from input value"
     }
 
-    fn cause(&self) -> Option<&StdError> {
+    fn cause(&self) -> Option<&dyn StdError> {
         None // there is no causing error
     }
 }
@@ -60,7 +60,7 @@ impl StdError for BunyanLogParseError {
         self.msg.as_str()
     }
 
-    fn cause(&self) -> Option<&StdError> {
+    fn cause(&self) -> Option<&dyn StdError> {
         None // there is no causing error
     }
 }
@@ -89,7 +89,7 @@ impl StdError for ParseIntFromJsonError {
         }
     }
 
-    fn cause(&self) -> Option<&StdError> {
+    fn cause(&self) -> Option<&dyn StdError> {
         match *self {
             ParseIntFromJsonError::Structural(ref e) => Some(e),
             ParseIntFromJsonError::Numeric(ref e) => Some(e),
@@ -166,7 +166,7 @@ impl StdError for Error {
     }
 
     #[allow(deprecated)]
-    fn cause(&self) -> Option<&StdError> {
+    fn cause(&self) -> Option<&dyn StdError> {
         match self.inner.kind {
             Kind::Json(ref e) => e.cause(),
             Kind::BunyanLogParse(ref e) => e.cause(),
