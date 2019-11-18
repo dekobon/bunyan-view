@@ -5,11 +5,11 @@ extern crate flate2;
 extern crate pager;
 
 use bunyan_view::{LogFormat, LogLevel, LoggerOutputConfig};
-use clap::{App, AppSettings, ArgMatches, Arg};
+use clap::{App, AppSettings, Arg, ArgMatches};
 use flate2::read::GzDecoder;
+use pager::Pager;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use pager::Pager;
 
 fn main() {
     let env_var_help = "Environment Variables:
@@ -60,6 +60,12 @@ fn main() {
             .long("no-color")
             .takes_value(false)
             .required(false))
+        .arg(Arg::with_name("time-local")
+            .help("Display time field in local time, rather than UTC")
+            .long("time-local")
+            .short("L")
+            .takes_value(false)
+            .required(false))
         .arg(Arg::with_name("FILE")
             .help("Sets the input file(s) to use")
             .required(false)
@@ -83,6 +89,7 @@ fn main() {
         is_strict: matches.is_present("strict"),
         is_debug: matches.is_present("debug"),
         level,
+        display_local_time: matches.is_present("time-local"),
     };
 
     apply_color_settings(&matches);

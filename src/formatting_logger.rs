@@ -12,6 +12,8 @@ use serde_json::Value;
 
 use colored::*;
 
+use chrono::{Local, SecondsFormat};
+
 /// Maximum characters for a string value in the extra parameters section
 const LONG_LINE_SIZE: usize = 50;
 /// Reserved keywords for requests records
@@ -107,8 +109,8 @@ fn write_all_extra_params<W: Write>(
     /// * `caller_option` - Optional name of top-level record (eg `req`, `res`, `err`, etc)
     ///
     fn detail_pretty_print(key: &str, value: &Value, caller_option: Option<&str>) -> String {
-        let pretty = ::serde_json::to_string_pretty(value)
-            .unwrap_or_else(|_| "[malformed]".to_string());
+        let pretty =
+            ::serde_json::to_string_pretty(value).unwrap_or_else(|_| "[malformed]".to_string());
 
         match caller_option {
             Some(caller) => format!("{}.{}: {}", caller, key, pretty),
@@ -486,9 +488,8 @@ fn write_req<W: Write>(writer: &mut W, key: &str, other: &mut Map<String, Value>
     // HTTP BODY
     if let Some(body) = req_map.remove("body") {
         if let Some(body_map) = body.as_object() {
-            let pretty =
-                ::serde_json::to_string_pretty(&body_map)
-                    .unwrap_or_else(|_| "[malformed]".to_string());
+            let pretty = ::serde_json::to_string_pretty(&body_map)
+                .unwrap_or_else(|_| "[malformed]".to_string());
             for line in pretty.lines() {
                 wln!(writer, "{:indent$}{}", "", line, indent = BASE_INDENT_SIZE);
             }
@@ -785,9 +786,8 @@ fn write_err<W: Write>(writer: &mut W, other: &mut Map<String, Value>) {
                 }
             }
             _ => {
-                let pretty =
-                    ::serde_json::to_string_pretty(&stack_val)
-                        .unwrap_or_else(|_| "[malformed]".to_string());
+                let pretty = ::serde_json::to_string_pretty(&stack_val)
+                    .unwrap_or_else(|_| "[malformed]".to_string());
                 for line in pretty.lines() {
                     wln!(writer, "{:indent$}{}", "", line, indent = BASE_INDENT_SIZE);
                 }
@@ -996,7 +996,21 @@ impl Logger for BunyanLine {
         let log_level: LogLevel = self.level.into();
 
         // Write the [time]
-        w!(writer, "{}{}{}", "[".blue(), self.time.bright_white(), "]".blue());
+        let time = if _output_config.display_local_time {
+            self.time
+                .with_timezone(&Local)
+                .to_rfc3339_opts(SecondsFormat::Millis, true)
+        } else {
+            self.time.to_rfc3339_opts(SecondsFormat::Millis, true)
+        };
+
+        w!(
+            writer,
+            "{}{}{}",
+            "[".blue(),
+            time.bright_white(),
+            "]".blue()
+        );
 
         // write the log [level] and app [name]
         w!(writer, " {}: {}/", log_level, self.name);

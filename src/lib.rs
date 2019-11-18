@@ -1,28 +1,31 @@
 #[macro_use]
 extern crate serde_derive;
+extern crate chrono;
+extern crate colored;
 extern crate httpstatus;
 extern crate serde;
 extern crate serde_json;
-extern crate colored;
 
 #[macro_use]
 mod macros;
+mod date_deserializer;
 mod divider_writer;
 mod errors;
-mod long_format_logger;
+mod formatting_logger;
 
 use crate::errors::LogLevelParseError;
 
+use std::borrow::Cow;
 use std::error::Error as StdError;
 use std::fmt;
 use std::io::{BufRead, Write};
-use std::borrow::Cow;
 
 use crate::errors::{Error, Kind, ParseResult};
+use chrono::prelude::*;
+use colored::*;
 use serde_json::map::Map;
 use serde_json::Error as SerdeError;
 use serde_json::Value;
-use colored::*;
 
 /// Default indent size in spaces
 const BASE_INDENT_SIZE: usize = 4;
@@ -74,7 +77,7 @@ impl LogLevel {
             "WARN" => Ok(LogLevel::WARN),
             "ERROR" => Ok(LogLevel::ERROR),
             "FATAL" => Ok(LogLevel::FATAL),
-            _  => {
+            _ => {
                 let numeric_string = if level.starts_with("LVL") {
                     &level[3..]
                 } else {
@@ -87,10 +90,9 @@ impl LogLevel {
                         // Maybe there is a whitespace issue?
                         println!("Attempting to parse numeric string: {}", level);
                         Err(LogLevelParseError::from(level))
-                    },
+                    }
                 }
             }
-
         }
     }
 }
@@ -128,7 +130,8 @@ pub struct BunyanLine {
     component: Option<String>,
     level: u16,
     msg: String,
-    time: String,
+    #[serde(with = "date_deserializer")]
+    time: DateTime<Utc>,
     v: Option<u8>,
     #[serde(flatten)]
     other: Map<String, Value>,
@@ -172,6 +175,7 @@ pub struct LoggerOutputConfig {
     pub is_strict: bool,
     pub is_debug: bool,
     pub level: Option<u16>,
+    pub display_local_time: bool,
 }
 
 fn handle_error<W>(writer: &mut W, error: &Error, output_config: &LoggerOutputConfig)
@@ -293,7 +297,10 @@ mod tests {
             let level_string = test_level.as_string();
             let lower_case_level_string = level_string.to_ascii_lowercase();
 
-            println!("Attempting to parse string [{}] as log level literal", level_string);
+            println!(
+                "Attempting to parse string [{}] as log level literal",
+                level_string
+            );
 
             // test parsing uppercase
             match LogLevel::parse(level_string) {

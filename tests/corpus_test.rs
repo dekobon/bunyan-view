@@ -33,6 +33,7 @@ fn assert_equals_to_file(filename: &str) {
         is_debug: false,
         is_strict: false,
         level: None,
+        display_local_time: false,
     };
 
     bunyan_view::write_bunyan_output(&mut writer, reader, &format, &output_config);
