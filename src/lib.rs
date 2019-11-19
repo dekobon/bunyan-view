@@ -11,7 +11,8 @@ mod macros;
 mod date_deserializer;
 mod divider_writer;
 mod errors;
-mod formatting_logger;
+mod format_logger_helpers;
+mod long_format_logger;
 
 use crate::errors::LogLevelParseError;
 
