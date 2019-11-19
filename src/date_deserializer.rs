@@ -37,10 +37,10 @@ struct TimeStampParseError {
 impl fmt::Display for TimeStampParseError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if let Some(error) = &self.rfc2822_parse_error {
-            return write!(f, "RFC2822 Parse Error: {}\n", error);
+            return write!(f, "RFC2822 Parse Error: {}", error);
         }
         if let Some(error) = &self.rfc3339_parse_error {
-            return write!(f, "RFC3339 Parse Error: {}\n", error);
+            return write!(f, "RFC3339 Parse Error: {}", error);
         }
 
         write!(f, "No errors")
@@ -86,7 +86,7 @@ fn parse_timestamp(time: &str) -> Result<DateTime<Utc>, TimeStampParseError> {
         }
     }
 
-    return Err(parse_error);
+    Err(parse_error)
 }
 
 #[cfg(test)]

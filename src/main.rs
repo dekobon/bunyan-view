@@ -171,9 +171,6 @@ fn apply_color_settings(matches: &ArgMatches) {
     if matches.is_present("no-color") || ::std::env::var_os("BUNYAN_NO_COLOR").is_some() {
         colored::control::set_override(false);
     // For clarity's sake we enable color when it is detected on the CLI as an explict conditional
-    } else if matches.is_present("color") {
-        colored::control::set_override(true);
-    // By default we colorize output
     } else {
         colored::control::set_override(true);
     }
