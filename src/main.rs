@@ -5,11 +5,11 @@ extern crate flate2;
 extern crate pager;
 
 use bunyan_view::{LogFormat, LogLevel, LoggerOutputConfig};
-use clap::{App, AppSettings, ArgMatches, Arg};
+use clap::{App, AppSettings, Arg, ArgMatches};
 use flate2::read::GzDecoder;
+use pager::Pager;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use pager::Pager;
 
 fn main() {
     let env_var_help = "Environment Variables:
@@ -17,7 +17,6 @@ fn main() {
   BUNYAN_NO_PAGER    Disable piping output to a pager. See \"--no-pager\".";
 
     let matches = App::new("Bunyan View")
-        .setting(AppSettings::ColorAuto)
         .setting(AppSettings::DeriveDisplayOrder)
         .setting(AppSettings::TrailingVarArg)
         .version(crate_version!())
@@ -61,6 +60,12 @@ fn main() {
             .long("no-color")
             .takes_value(false)
             .required(false))
+        .arg(Arg::with_name("time-local")
+            .help("Display time field in local time, rather than UTC")
+            .long("time-local")
+            .short("L")
+            .takes_value(false)
+            .required(false))
         .arg(Arg::with_name("FILE")
             .help("Sets the input file(s) to use")
             .required(false)
@@ -84,6 +89,7 @@ fn main() {
         is_strict: matches.is_present("strict"),
         is_debug: matches.is_present("debug"),
         level,
+        display_local_time: matches.is_present("time-local"),
     };
 
     apply_color_settings(&matches);
@@ -164,7 +170,8 @@ fn apply_color_settings(matches: &ArgMatches) {
     // If BUNYAN_NO_COLOR is set, we intentionally ignore the --color setting
     if matches.is_present("no-color") || ::std::env::var_os("BUNYAN_NO_COLOR").is_some() {
         colored::control::set_override(false);
-    } else if matches.is_present("color") {
+    // For clarity's sake we enable color when it is detected on the CLI as an explict conditional
+    } else {
         colored::control::set_override(true);
     }
 }
