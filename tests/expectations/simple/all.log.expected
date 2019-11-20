@@ -1,0 +1,20 @@
+# levels
+TRACE - My message
+DEBUG - My message
+INFO - My message
+WARN - My message
+ERROR - My message
+LVL55 - My message
+FATAL - My message
+
+# extra fields
+INFO - My message
+INFO - My message
+INFO - My message
+INFO - My message
+INFO - My message
+INFO - My message
+
+# bogus
+not a JSON line
+{"hi": "there"}

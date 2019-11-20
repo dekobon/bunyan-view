@@ -1203,4 +1203,21 @@ impl Logger for BunyanLine {
 
         Ok(())
     }
+
+    fn write_simple_format<W: Write>(
+        &self,
+        writer: &mut W,
+        _output_config: &LoggerOutputConfig,
+    ) -> ParseResult {
+        if let Some(err) = validate_log_data_structure(&self) {
+            return Err(err);
+        }
+
+        let log_level: LogLevel = self.level.into();
+
+        // write the log [level]
+        wln!(writer, "{} - {}", log_level.as_string(), self.msg);
+
+        Ok(())
+    }
 }
