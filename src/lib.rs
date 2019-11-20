@@ -148,12 +148,19 @@ pub trait Logger {
         writer: &mut W,
         output_config: &LoggerOutputConfig,
     ) -> ParseResult;
+
+    fn write_simple_format<W: Write>(
+        &self,
+        writer: &mut W,
+        output_config: &LoggerOutputConfig,
+    ) -> ParseResult;
 }
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Clone, Hash)]
 pub enum LogFormat {
     Long,
     Short,
+    Simple,
 }
 
 impl LogFormat {
@@ -161,6 +168,7 @@ impl LogFormat {
         match *self {
             LogFormat::Long => "long".into(),
             LogFormat::Short => "short".into(),
+            LogFormat::Simple => "simple".into(),
         }
     }
 }
@@ -184,6 +192,7 @@ impl LogWriter for LogFormat {
         match output_config.format {
             LogFormat::Long => log.write_long_format(writer, output_config),
             LogFormat::Short => log.write_short_format(writer, output_config),
+            LogFormat::Simple => log.write_simple_format(writer, output_config),
         }
     }
 }

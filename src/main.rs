@@ -35,8 +35,8 @@ fn main() {
             .takes_value(false)
             .required(false))
         .arg(Arg::with_name("level")
-            .help("Only show messages at or above the specified level.\
-            You can specify level *names* or the internal numeric values.")
+            .help("Only show messages at or above the specified level.
+You can specify level *names* or the internal numeric values.")
             .long("level")
             .short("l")
             .takes_value(true)
@@ -64,11 +64,11 @@ fn main() {
         .arg(Arg::with_name("output")
             .help("Specify an output mode/format. One of
   long: (the default) pretty
-  short: like \"long\", but more concise")
+  short: like \"long\", but more concise
+  simple: level, followed by \"-\" and then the message")
             .long("output")
             .short("o")
             .takes_value(true)
-            .default_value("long")
             .value_name("mode")
             .required(false))
         .arg(Arg::with_name("time-local")
@@ -99,6 +99,7 @@ fn main() {
         Some(output_string) => match output_string.to_ascii_lowercase().as_ref() {
             "long" => LogFormat::Long,
             "short" => LogFormat::Short,
+            "simple" => LogFormat::Simple,
             _mode => {
                 eprintln!("error: unknown output mode: \"{}\"", _mode);
                 std::process::exit(1);

@@ -508,3 +508,229 @@ fn short_with_weird_extra_params() {
         LogFormat::Short,
     );
 }
+
+// SIMPLE FORMAT
+
+/* ============================================================================================== *\
+ * Test corpus files from node bunyan
+ * ============================================================================================== */
+
+#[test]
+fn simple_format_simple() {
+    assert_equals_to_file(
+        "tests/corpus/simple.log",
+        "tests/expectations/simple/simple.log.expected",
+        LogFormat::Simple,
+    );
+}
+
+#[test]
+fn simple_format_extrafield() {
+    assert_equals_to_file(
+        "tests/corpus/extrafield.log",
+        "tests/expectations/simple/extrafield.log.expected",
+        LogFormat::Simple,
+    );
+}
+
+#[test]
+fn simple_format_bogus() {
+    assert_equals_to_file(
+        "tests/corpus/bogus.log",
+        "tests/expectations/simple/bogus.log.expected",
+        LogFormat::Simple,
+    );
+}
+
+#[test]
+fn simple_format_withreq() {
+    assert_equals_to_file(
+        "tests/corpus/withreq.log",
+        "tests/expectations/simple/withreq.log.expected",
+        LogFormat::Simple,
+    );
+}
+
+#[test]
+fn simple_format_all() {
+    assert_equals_to_file(
+        "tests/corpus/all.log",
+        "tests/expectations/simple/all.log.expected",
+        LogFormat::Simple,
+    );
+}
+
+#[test]
+fn simple_client_req_with_address() {
+    assert_equals_to_file(
+        "tests/corpus/client-req-with-address.log",
+        "tests/expectations/simple/client-req-with-address.log.expected",
+        LogFormat::Simple,
+    );
+}
+
+#[test]
+fn simple_client_reqres() {
+    assert_equals_to_file(
+        "tests/corpus/clientreqres.log",
+        "tests/expectations/simple/clientreqres.log.expected",
+        LogFormat::Simple,
+    );
+}
+
+#[test]
+fn simple_content_length_zero_res() {
+    assert_equals_to_file(
+        "tests/corpus/content-length-0-res.log",
+        "tests/expectations/simple/content-length-0-res.log.expected",
+        LogFormat::Simple,
+    );
+}
+
+#[test]
+fn simple_log_1() {
+    assert_equals_to_file(
+        "tests/corpus/log1.log",
+        "tests/expectations/simple/log1.log.expected",
+        LogFormat::Simple,
+    );
+}
+
+#[test]
+fn simple_log_2() {
+    assert_equals_to_file(
+        "tests/corpus/log2.log",
+        "tests/expectations/simple/log2.log.expected",
+        LogFormat::Simple,
+    );
+}
+
+#[test]
+fn simple_non_object_res() {
+    assert_equals_to_file(
+        "tests/corpus/non-object-res.log",
+        "tests/expectations/simple/non-object-res.log.expected",
+        LogFormat::Simple,
+    );
+}
+
+#[test]
+fn simple_res_header() {
+    assert_equals_to_file(
+        "tests/corpus/res-header.log",
+        "tests/expectations/simple/res-header.log.expected",
+        LogFormat::Simple,
+    );
+}
+
+#[test]
+fn simple_res_without_header() {
+    assert_equals_to_file(
+        "tests/corpus/res-without-header.log",
+        "tests/expectations/simple/res-without-header.log.expected",
+        LogFormat::Simple,
+    );
+}
+
+#[test]
+fn simple_old_crashers_139() {
+    assert_equals_to_file(
+        "tests/corpus/old-crashers/139.log",
+        "tests/expectations/simple/old-crashers/139.log.expected",
+        LogFormat::Simple,
+    );
+}
+
+#[test]
+fn simple_old_crashers_144() {
+    assert_equals_to_file(
+        "tests/corpus/old-crashers/144.log",
+        "tests/expectations/simple/old-crashers/144.log.expected",
+        LogFormat::Simple,
+    );
+}
+
+#[test]
+fn simple_old_crashers_233() {
+    assert_equals_to_file(
+        "tests/corpus/old-crashers/233.log",
+        "tests/expectations/simple/old-crashers/233.log.expected",
+        LogFormat::Simple,
+    );
+}
+
+#[test]
+fn simple_old_crashers_242() {
+    assert_equals_to_file(
+        "tests/corpus/old-crashers/242.log",
+        "tests/expectations/simple/old-crashers/242.log.expected",
+        LogFormat::Simple,
+    );
+}
+
+#[test]
+fn simple_old_crashers_244() {
+    assert_equals_to_file(
+        "tests/corpus/old-crashers/244.log",
+        "tests/expectations/simple/old-crashers/244.log.expected",
+        LogFormat::Simple,
+    );
+}
+
+/* ============================================================================================== *\
+ * Test corpus files created for rust bunyan view
+ * ============================================================================================== */
+
+#[test]
+fn simple_error_with_stack() {
+    assert_equals_to_file(
+        "tests/corpus/error-with-stack.log",
+        "tests/expectations/simple/error-with-stack.log.expected",
+        LogFormat::Simple,
+    );
+}
+
+#[test]
+fn simple_req_with_newlines() {
+    assert_equals_to_file(
+        "tests/corpus/req-with-newlines.log",
+        "tests/expectations/simple/req-with-newlines.log.expected",
+        LogFormat::Simple,
+    );
+}
+
+#[test]
+fn simple_req_with_trailers() {
+    assert_equals_to_file(
+        "tests/corpus/req-with-trailers.log",
+        "tests/expectations/simple/req-with-trailers.log.expected",
+        LogFormat::Simple,
+    );
+}
+
+#[test]
+fn simple_res_with_empty_object() {
+    assert_equals_to_file(
+        "tests/corpus/res-with-empty-object.log",
+        "tests/expectations/simple/res-with-empty-object.log.expected",
+        LogFormat::Simple,
+    );
+}
+
+#[test]
+fn simple_with_numeric_req_id() {
+    assert_equals_to_file(
+        "tests/corpus/with-numeric-req-id.log",
+        "tests/expectations/simple/with-numeric-req-id.log.expected",
+        LogFormat::Simple,
+    );
+}
+
+#[test]
+fn simple_with_weird_extra_params() {
+    assert_equals_to_file(
+        "tests/corpus/with-weird-extra-params.log",
+        "tests/expectations/simple/with-weird-extra-params.log.expected",
+        LogFormat::Simple,
+    );
+}
