@@ -35,7 +35,8 @@ fn main() {
             .takes_value(false)
             .required(false))
         .arg(Arg::with_name("level")
-            .help("Only show messages at or above the specified level. You can specify level *names* or the internal numeric values.")
+            .help("Only show messages at or above the specified level.\
+            You can specify level *names* or the internal numeric values.")
             .long("level")
             .short("l")
             .takes_value(true)
@@ -59,6 +60,16 @@ fn main() {
             .help("Force no coloring (e.g. terminal doesn't support it)")
             .long("no-color")
             .takes_value(false)
+            .required(false))
+        .arg(Arg::with_name("output")
+            .help("Specify an output mode/format. One of
+  long: (the default) pretty
+  short: like \"long\", but more concise")
+            .long("output")
+            .short("o")
+            .takes_value(true)
+            .default_value("long")
+            .value_name("mode")
             .required(false))
         .arg(Arg::with_name("time-local")
             .help("Display time field in local time, rather than UTC")
@@ -84,12 +95,25 @@ fn main() {
         None => None,
     };
 
+    let format = match matches.value_of("output") {
+        Some(output_string) => match output_string.to_ascii_lowercase().as_ref() {
+            "long" => LogFormat::Long,
+            "short" => LogFormat::Short,
+            _mode => {
+                eprintln!("error: unknown output mode: \"{}\"", _mode);
+                std::process::exit(1);
+            }
+        },
+        None => LogFormat::Long,
+    };
+
     let output_config = LoggerOutputConfig {
         indent: 4,
         is_strict: matches.is_present("strict"),
         is_debug: matches.is_present("debug"),
         level,
         display_local_time: matches.is_present("time-local"),
+        format,
     };
 
     apply_color_settings(&matches);
@@ -118,22 +142,12 @@ fn main() {
                     Box::new(BufReader::new(file))
                 };
 
-                bunyan_view::write_bunyan_output(
-                    &mut std::io::stdout(),
-                    reader,
-                    &LogFormat::Long,
-                    &output_config,
-                );
+                bunyan_view::write_bunyan_output(&mut std::io::stdout(), reader, &output_config);
             }
         }
         None => {
             let reader = Box::new(BufReader::new(std::io::stdin()));
-            bunyan_view::write_bunyan_output(
-                &mut std::io::stdout(),
-                reader,
-                &LogFormat::Long,
-                &output_config,
-            );
+            bunyan_view::write_bunyan_output(&mut std::io::stdout(), reader, &output_config);
         }
     }
 }

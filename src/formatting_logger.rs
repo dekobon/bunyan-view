@@ -1,7 +1,7 @@
 use crate::divider_writer::DividerWriter;
 use crate::errors::{BunyanLogParseError, ParseIntFromJsonError, ParseResult};
-use crate::BunyanLine;
 use crate::BASE_INDENT_SIZE;
+use crate::{BunyanLine, LogLevel, Logger, LoggerOutputConfig};
 
 use std::io::Write;
 
@@ -11,6 +11,8 @@ use serde_json::map::Map;
 use serde_json::Value;
 
 use colored::*;
+
+use chrono::{Local, SecondsFormat};
 
 /// Maximum characters for a string value in the extra parameters section
 const LONG_LINE_SIZE: usize = 50;
@@ -59,7 +61,7 @@ const DEFAULT_HTTP_VERSION: &str = "1.1";
 /// * `writer` - Write implementation to output data to
 /// * `other` - Mutable map containing JSON optional JSON data. Keys will be removed as processed.
 ///
-pub fn write_src<W: Write>(writer: &mut W, other: &mut Map<String, Value>) {
+fn write_src<W: Write>(writer: &mut W, other: &mut Map<String, Value>) {
     if let Some(ref src) = other.remove("src") {
         match src {
             Value::Object(map) => {
@@ -94,7 +96,7 @@ pub fn write_src<W: Write>(writer: &mut W, other: &mut Map<String, Value>) {
 /// * `other` - Map containing all non-explicitly deserialized keys and values
 /// * `details` - Mutable vector containing strings to be written as output later
 ///
-pub fn write_all_extra_params<W: Write>(
+fn write_all_extra_params<W: Write>(
     writer: &mut W,
     other: &mut Map<String, Value>,
     details: &mut Vec<String>,
@@ -363,7 +365,7 @@ pub fn write_all_extra_params<W: Write>(
 /// * `writer` - Write implementation to output data to
 /// * `other` - Map containing all non-explicitly deserialized keys and values
 ///
-pub fn write_req<W: Write>(writer: &mut W, key: &str, other: &mut Map<String, Value>) {
+fn write_req<W: Write>(writer: &mut W, key: &str, other: &mut Map<String, Value>) {
     /// Writes the method, url and HTTP version associated with a request.
     ///
     /// # Arguments
@@ -517,7 +519,7 @@ pub fn write_req<W: Write>(writer: &mut W, key: &str, other: &mut Map<String, Va
 /// If there are any problems converting the value to an unsigned 16 bit integer, then
 /// `None` will be returned.
 ///
-pub fn json_string_or_number_as_u16(val: &Value) -> Result<u16, ParseIntFromJsonError> {
+fn json_string_or_number_as_u16(val: &Value) -> Result<u16, ParseIntFromJsonError> {
     match val {
         Value::Number(number) => {
             if let Some(code) = number.as_u64() {
@@ -572,7 +574,7 @@ pub fn json_string_or_number_as_u16(val: &Value) -> Result<u16, ParseIntFromJson
 /// * `writer` - Write implementation to output data to
 /// * `other` - Map containing all non-explicitly deserialized keys and values
 ///
-pub fn write_res<W: Write>(writer: &mut W, key: &str, other: &mut Map<String, Value>) {
+fn write_res<W: Write>(writer: &mut W, key: &str, other: &mut Map<String, Value>) {
     /// Searches the passed map for the key `headers` and then `header` returning whichever
     /// is found first and is a valid string or JSON object. Otherwise, `None` is returned.
     fn find_headers(map: &mut Map<String, Value>) -> Option<Value> {
@@ -712,7 +714,7 @@ pub fn write_res<W: Write>(writer: &mut W, key: &str, other: &mut Map<String, Va
 /// * `caller_name` - text indicating if we have been invoked from a "req" or "client_req" code path
 /// * `headers` - Mutable map containing header(s) keys. Keys will be removed as processed.
 ///
-pub fn write_headers<W: Write>(writer: &mut W, headers: &Value) {
+fn write_headers<W: Write>(writer: &mut W, headers: &Value) {
     match headers {
         Value::String(headers_string) => {
             for line in headers_string.lines() {
@@ -750,7 +752,7 @@ pub fn write_headers<W: Write>(writer: &mut W, headers: &Value) {
 /// * `writer` - Write implementation to output data to
 /// * `other` - Map containing all non-explicitly deserialized keys and values
 ///
-pub fn write_err<W: Write>(writer: &mut W, other: &mut Map<String, Value>) {
+fn write_err<W: Write>(writer: &mut W, other: &mut Map<String, Value>) {
     let err_option = other.remove("err");
 
     if err_option.is_none() {
@@ -802,7 +804,7 @@ pub fn write_err<W: Write>(writer: &mut W, other: &mut Map<String, Value>) {
 /// * `writer` - Write implementation to output data to
 /// * `details` - Vector containing the parameters to write out each in their own section
 ///
-pub fn write_details<W: Write>(divider_writer: &mut DividerWriter<W>, details: Vec<String>) {
+fn write_details<W: Write>(divider_writer: &mut DividerWriter<W>, details: Vec<String>) {
     for item in details {
         for line in item.lines() {
             wln!(
@@ -832,7 +834,7 @@ pub fn write_details<W: Write>(divider_writer: &mut DividerWriter<W>, details: V
 /// This function will return None if no errors have been encountered. In the case of parsing logic
 /// errors where the JSON data is not in the expected format, it will return a
 /// `Option<BunyanLogParseError>`.
-pub fn validate_log_data_structure(line: &BunyanLine) -> Option<BunyanLogParseError> {
+fn validate_log_data_structure(line: &BunyanLine) -> Option<BunyanLogParseError> {
     fn find_headers(map: &Map<String, Value>) -> Option<&Value> {
         if let Some(headers) = map.get("headers") {
             if headers.is_string() || headers.is_object() {
@@ -979,4 +981,226 @@ pub fn validate_log_data_structure(line: &BunyanLine) -> Option<BunyanLogParseEr
     }
 
     None
+}
+
+impl Logger for BunyanLine {
+    fn write_long_format<W: Write>(
+        &self,
+        writer: &mut W,
+        _output_config: &LoggerOutputConfig,
+    ) -> ParseResult {
+        fn colorize_log_level(level: LogLevel) -> String {
+            match level {
+                LogLevel::TRACE => level.to_string(),
+                LogLevel::DEBUG => level.to_string().yellow().to_string(),
+                LogLevel::INFO => level.to_string().cyan().to_string(),
+                LogLevel::WARN => level.to_string().magenta().to_string(),
+                LogLevel::ERROR => level.to_string().red().to_string(),
+                LogLevel::FATAL => level.to_string().reverse().to_string(),
+                LogLevel::OTHER(_code) => level.to_string(),
+            }
+        }
+
+        if let Some(err) = validate_log_data_structure(&self) {
+            return Err(err);
+        }
+
+        let log_level: LogLevel = self.level.into();
+
+        // Write the [time]
+        let time = if _output_config.display_local_time {
+            self.time
+                .with_timezone(&Local)
+                .to_rfc3339_opts(SecondsFormat::Millis, true)
+        } else {
+            self.time.to_rfc3339_opts(SecondsFormat::Millis, true)
+        };
+
+        w!(
+            writer,
+            "{}{}{}",
+            "[".blue(),
+            time.bright_white(),
+            "]".blue()
+        );
+
+        // write the log [level] and app [name]
+        w!(writer, " {}: {}/", colorize_log_level(log_level), self.name);
+
+        // If present, write the [component]
+        if let Some(ref component) = self.component {
+            w!(writer, "{}/", component);
+        }
+
+        // Write the [pid] and [hostname]
+        w!(writer, "{} on {}", self.pid, self.hostname);
+
+        let other = &mut self.other.clone();
+
+        // If present, write the source line reference [src]
+        write_src(writer, other);
+
+        let mut details: Vec<String> = Vec::new();
+
+        // If our log message [msg] contains a line break, we display it in the details section
+        if self.msg.contains('\n') {
+            let indented_msg = format!("{:indent$}{}", "", self.msg, indent = BASE_INDENT_SIZE);
+            details.push(indented_msg)
+        // Write the log message [msg] as is because there is no line break
+        } else if !self.msg.is_empty() {
+            w!(writer, ": {}", self.msg.cyan());
+        } else {
+            w!(writer, ":");
+        }
+
+        write_all_extra_params(writer, other, &mut details);
+
+        // Write line feed finishing the first line
+        wln!(writer);
+
+        let wrapped_writer = &mut DividerWriter::new(writer, true);
+
+        // If present, write the request [req]
+        write_req(wrapped_writer, "req", other);
+
+        if wrapped_writer.has_been_written {
+            wrapped_writer.mark_divider_as_unwritten();
+        }
+
+        // If present, write the client request [client_req]
+        write_req(wrapped_writer, "client_req", other);
+
+        if wrapped_writer.has_been_written {
+            wrapped_writer.mark_divider_as_unwritten();
+        }
+
+        // If present, write the response [res]
+        write_res(wrapped_writer, "res", other);
+
+        if wrapped_writer.has_been_written {
+            wrapped_writer.mark_divider_as_unwritten();
+        }
+
+        // If present, write the response [client_res]
+        write_res(wrapped_writer, "client_res", other);
+
+        if wrapped_writer.has_been_written {
+            wrapped_writer.mark_divider_as_unwritten();
+        }
+
+        // If present, write the error information [err]
+        write_err(wrapped_writer, other);
+
+        if wrapped_writer.has_been_written {
+            wrapped_writer.mark_divider_as_unwritten();
+        }
+
+        // Write out all of the values stored in the details vector
+        write_details(wrapped_writer, details);
+
+        Ok(())
+    }
+
+    fn write_short_format<W: Write>(
+        &self,
+        writer: &mut W,
+        _output_config: &LoggerOutputConfig,
+    ) -> ParseResult {
+        pub fn right_align_and_colorize_log_level(level: LogLevel) -> String {
+            match level {
+                LogLevel::TRACE => format!("{: >5}", level),
+                LogLevel::DEBUG => format!("{: >5}", level).yellow().to_string(),
+                LogLevel::INFO => format!("{: >5}", level).cyan().to_string(),
+                LogLevel::WARN => format!("{: >5}", level).magenta().to_string(),
+                LogLevel::ERROR => format!("{: >5}", level).red().to_string(),
+                LogLevel::FATAL => format!("{: >5}", level).reverse().to_string(),
+                LogLevel::OTHER(_code) => level.to_string(),
+            }
+        }
+
+        if let Some(err) = validate_log_data_structure(&self) {
+            return Err(err);
+        }
+
+        let log_level: LogLevel = self.level.into();
+
+        // Write the [time]
+        let time = if _output_config.display_local_time {
+            self.time.with_timezone(&Local).format("%H:%M:%S%.3f")
+        } else {
+            self.time.format("%H:%M:%S%.3fZ")
+        }
+        .to_string();
+
+        w!(writer, "{}", time.bright_white());
+
+        // write the log [level] and app [name]
+        let level_right_indented = right_align_and_colorize_log_level(log_level);
+        w!(writer, " {} {}", level_right_indented, self.name);
+
+        let other = &mut self.other.clone();
+
+        // If present, write the source line reference [src]
+        write_src(writer, other);
+
+        let mut details: Vec<String> = Vec::new();
+
+        // If our log message [msg] contains a line break, we display it in the details section
+        if self.msg.contains('\n') {
+            let indented_msg = format!("{:indent$}{}", "", self.msg, indent = BASE_INDENT_SIZE);
+            details.push(indented_msg)
+        // Write the log message [msg] as is because there is no line break
+        } else if !self.msg.is_empty() {
+            w!(writer, ": {}", self.msg.cyan());
+        } else {
+            w!(writer, ":");
+        }
+
+        write_all_extra_params(writer, other, &mut details);
+
+        // Write line feed finishing the first line
+        wln!(writer);
+
+        let wrapped_writer = &mut DividerWriter::new(writer, true);
+
+        // If present, write the request [req]
+        write_req(wrapped_writer, "req", other);
+
+        if wrapped_writer.has_been_written {
+            wrapped_writer.mark_divider_as_unwritten();
+        }
+
+        // If present, write the client request [client_req]
+        write_req(wrapped_writer, "client_req", other);
+
+        if wrapped_writer.has_been_written {
+            wrapped_writer.mark_divider_as_unwritten();
+        }
+
+        // If present, write the response [res]
+        write_res(wrapped_writer, "res", other);
+
+        if wrapped_writer.has_been_written {
+            wrapped_writer.mark_divider_as_unwritten();
+        }
+
+        // If present, write the response [client_res]
+        write_res(wrapped_writer, "client_res", other);
+
+        if wrapped_writer.has_been_written {
+            wrapped_writer.mark_divider_as_unwritten();
+        }
+
+        // If present, write the error information [err]
+        write_err(wrapped_writer, other);
+
+        if wrapped_writer.has_been_written {
+            wrapped_writer.mark_divider_as_unwritten();
+        }
+
+        // Write out all of the values stored in the details vector
+        write_details(wrapped_writer, details);
+
+        Ok(())
+    }
 }

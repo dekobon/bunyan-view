@@ -1,0 +1,15 @@
+07:28:41.419Z  INFO myservice: UnauthorizedError
+    HTTP/1.1 401 Unauthorized
+    content-type: text/plain
+    date: Sat, 07 Mar 2015 06:58:43 GMT
+07:28:41.419Z  INFO myservice: hello
+    HTTP/1.1 200 OK
+    content-type: text/plain
+    content-length: 0
+    date: Sat, 07 Mar 2015 06:58:43 GMT
+
+    hello
+07:28:41.419Z  INFO myservice: UnauthorizedError
+    HTTP/1.1 401 Unauthorized
+    content-type: text/plain
+    date: Sat, 07 Mar 2015 06:58:43 GMT

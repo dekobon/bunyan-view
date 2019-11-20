@@ -1,0 +1,68 @@
+16:57:55.586Z  INFO agent1: message (req=null)
+16:57:55.586Z  INFO agent1: message (req=3.14)
+16:57:55.586Z  INFO agent1: message (req=some-string)
+16:57:55.586Z  INFO agent1: message
+    req: [
+      "a",
+      "b"
+    ]
+16:57:55.586Z  INFO agent1: message (req.a=b)
+    undefined undefined HTTP/1.1
+16:57:55.586Z  INFO agent1: message
+    undefined undefined HTTP/1.1
+    --
+    req.a: {
+      "b": "c"
+    }
+16:57:55.586Z  INFO agent1: message
+    undefined undefined HTTP/1.1
+    --
+    req.a: [
+      "b",
+      "c"
+    ]
+16:57:55.586Z  INFO agent1: message (wat=null)
+16:57:55.586Z  INFO agent1: message (wat=3.14)
+16:57:55.586Z  INFO agent1: message (wat=some-string)
+16:57:55.586Z  INFO agent1: message
+    wat: [
+      "a",
+      "b"
+    ]
+16:57:55.586Z  INFO agent1: message
+    wat: {
+      "a": "b"
+    }
+16:57:55.586Z  INFO agent1: message
+    wat: {
+      "a": {
+        "b": "c"
+      }
+    }
+16:57:55.586Z  INFO agent1: message
+    wat: {
+      "a": [
+        "b",
+        "c"
+      ]
+    }
+16:57:55.586Z  INFO agent1: message (err=true)
+16:57:55.586Z  INFO agent1: message (err=false)
+16:57:55.586Z  INFO agent1: message (err=null)
+16:57:55.586Z  INFO agent1: message (err=3.14)
+16:57:55.586Z  INFO agent1: message (err=some-string)
+16:57:55.586Z  INFO agent1: message
+    err: [
+      "a",
+      "b"
+    ]
+16:57:55.586Z  INFO agent1: message (err.a=b)
+16:57:55.586Z  INFO agent1: message
+    err.a: {
+      "b": "c"
+    }
+16:57:55.586Z  INFO agent1: message
+    err.a: [
+      "b",
+      "c"
+    ]
