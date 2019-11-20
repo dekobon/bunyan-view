@@ -1,0 +1,11 @@
+07:28:32.431Z  INFO server: Time used: 30ms (req.remoteAddress=::ffff:123.123.123.123)
+    GET /ground/fetch?id=null HTTP/1.1
+    host: 123.123.123.123
+    connection: Keep-Alive
+    accept-encoding: gzip
+    --
+    res.content: {
+      "status": 0,
+      "message": "success",
+      "messages": []
+    }

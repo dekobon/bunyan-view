@@ -1,0 +1,31 @@
+# levels
+22:56:50.856Z TRACE myservice: My message
+22:56:51.856Z DEBUG myservice: My message
+22:56:52.856Z  INFO myservice: My message
+22:56:53.856Z  WARN myservice: My message
+22:56:54.856Z ERROR myservice: My message
+22:56:55.856Z LVL55 myservice: My message
+22:56:56.856Z FATAL myservice: My message
+
+# extra fields
+22:56:52.856Z  INFO myservice: My message (one=short)
+22:56:52.856Z  INFO myservice: My message (two="short with space")
+22:56:52.856Z  INFO myservice: My message
+    three: multi
+    line
+22:56:52.856Z  INFO myservice: My message
+    four: over 50 chars long long long long long long long long long
+22:56:52.856Z  INFO myservice: My message
+    five: {
+      "a": "json object"
+    }
+22:56:52.856Z  INFO myservice: My message
+    six: [
+      "a",
+      "json",
+      "array"
+    ]
+
+# bogus
+not a JSON line
+{"hi": "there"}

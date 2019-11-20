@@ -12,6 +12,8 @@ use serde_json::Value;
 
 use colored::*;
 
+use chrono::{Local, SecondsFormat};
+
 /// Maximum characters for a string value in the extra parameters section
 const LONG_LINE_SIZE: usize = 50;
 /// Reserved keywords for requests records
@@ -107,8 +109,8 @@ fn write_all_extra_params<W: Write>(
     /// * `caller_option` - Optional name of top-level record (eg `req`, `res`, `err`, etc)
     ///
     fn detail_pretty_print(key: &str, value: &Value, caller_option: Option<&str>) -> String {
-        let pretty = ::serde_json::to_string_pretty(value)
-            .unwrap_or_else(|_| "[malformed]".to_string());
+        let pretty =
+            ::serde_json::to_string_pretty(value).unwrap_or_else(|_| "[malformed]".to_string());
 
         match caller_option {
             Some(caller) => format!("{}.{}: {}", caller, key, pretty),
@@ -486,9 +488,8 @@ fn write_req<W: Write>(writer: &mut W, key: &str, other: &mut Map<String, Value>
     // HTTP BODY
     if let Some(body) = req_map.remove("body") {
         if let Some(body_map) = body.as_object() {
-            let pretty =
-                ::serde_json::to_string_pretty(&body_map)
-                    .unwrap_or_else(|_| "[malformed]".to_string());
+            let pretty = ::serde_json::to_string_pretty(&body_map)
+                .unwrap_or_else(|_| "[malformed]".to_string());
             for line in pretty.lines() {
                 wln!(writer, "{:indent$}{}", "", line, indent = BASE_INDENT_SIZE);
             }
@@ -785,9 +786,8 @@ fn write_err<W: Write>(writer: &mut W, other: &mut Map<String, Value>) {
                 }
             }
             _ => {
-                let pretty =
-                    ::serde_json::to_string_pretty(&stack_val)
-                        .unwrap_or_else(|_| "[malformed]".to_string());
+                let pretty = ::serde_json::to_string_pretty(&stack_val)
+                    .unwrap_or_else(|_| "[malformed]".to_string());
                 for line in pretty.lines() {
                     wln!(writer, "{:indent$}{}", "", line, indent = BASE_INDENT_SIZE);
                 }
@@ -989,6 +989,18 @@ impl Logger for BunyanLine {
         writer: &mut W,
         _output_config: &LoggerOutputConfig,
     ) -> ParseResult {
+        fn colorize_log_level(level: LogLevel) -> String {
+            match level {
+                LogLevel::TRACE => level.to_string(),
+                LogLevel::DEBUG => level.to_string().yellow().to_string(),
+                LogLevel::INFO => level.to_string().cyan().to_string(),
+                LogLevel::WARN => level.to_string().magenta().to_string(),
+                LogLevel::ERROR => level.to_string().red().to_string(),
+                LogLevel::FATAL => level.to_string().reverse().to_string(),
+                LogLevel::OTHER(_code) => level.to_string(),
+            }
+        }
+
         if let Some(err) = validate_log_data_structure(&self) {
             return Err(err);
         }
@@ -996,10 +1008,24 @@ impl Logger for BunyanLine {
         let log_level: LogLevel = self.level.into();
 
         // Write the [time]
-        w!(writer, "{}{}{}", "[".blue(), self.time.bright_white(), "]".blue());
+        let time = if _output_config.display_local_time {
+            self.time
+                .with_timezone(&Local)
+                .to_rfc3339_opts(SecondsFormat::Millis, true)
+        } else {
+            self.time.to_rfc3339_opts(SecondsFormat::Millis, true)
+        };
+
+        w!(
+            writer,
+            "{}{}{}",
+            "[".blue(),
+            time.bright_white(),
+            "]".blue()
+        );
 
         // write the log [level] and app [name]
-        w!(writer, " {}: {}/", log_level, self.name);
+        w!(writer, " {}: {}/", colorize_log_level(log_level), self.name);
 
         // If present, write the [component]
         if let Some(ref component) = self.component {
@@ -1008,6 +1034,109 @@ impl Logger for BunyanLine {
 
         // Write the [pid] and [hostname]
         w!(writer, "{} on {}", self.pid, self.hostname);
+
+        let other = &mut self.other.clone();
+
+        // If present, write the source line reference [src]
+        write_src(writer, other);
+
+        let mut details: Vec<String> = Vec::new();
+
+        // If our log message [msg] contains a line break, we display it in the details section
+        if self.msg.contains('\n') {
+            let indented_msg = format!("{:indent$}{}", "", self.msg, indent = BASE_INDENT_SIZE);
+            details.push(indented_msg)
+        // Write the log message [msg] as is because there is no line break
+        } else if !self.msg.is_empty() {
+            w!(writer, ": {}", self.msg.cyan());
+        } else {
+            w!(writer, ":");
+        }
+
+        write_all_extra_params(writer, other, &mut details);
+
+        // Write line feed finishing the first line
+        wln!(writer);
+
+        let wrapped_writer = &mut DividerWriter::new(writer, true);
+
+        // If present, write the request [req]
+        write_req(wrapped_writer, "req", other);
+
+        if wrapped_writer.has_been_written {
+            wrapped_writer.mark_divider_as_unwritten();
+        }
+
+        // If present, write the client request [client_req]
+        write_req(wrapped_writer, "client_req", other);
+
+        if wrapped_writer.has_been_written {
+            wrapped_writer.mark_divider_as_unwritten();
+        }
+
+        // If present, write the response [res]
+        write_res(wrapped_writer, "res", other);
+
+        if wrapped_writer.has_been_written {
+            wrapped_writer.mark_divider_as_unwritten();
+        }
+
+        // If present, write the response [client_res]
+        write_res(wrapped_writer, "client_res", other);
+
+        if wrapped_writer.has_been_written {
+            wrapped_writer.mark_divider_as_unwritten();
+        }
+
+        // If present, write the error information [err]
+        write_err(wrapped_writer, other);
+
+        if wrapped_writer.has_been_written {
+            wrapped_writer.mark_divider_as_unwritten();
+        }
+
+        // Write out all of the values stored in the details vector
+        write_details(wrapped_writer, details);
+
+        Ok(())
+    }
+
+    fn write_short_format<W: Write>(
+        &self,
+        writer: &mut W,
+        _output_config: &LoggerOutputConfig,
+    ) -> ParseResult {
+        pub fn right_align_and_colorize_log_level(level: LogLevel) -> String {
+            match level {
+                LogLevel::TRACE => format!("{: >5}", level),
+                LogLevel::DEBUG => format!("{: >5}", level).yellow().to_string(),
+                LogLevel::INFO => format!("{: >5}", level).cyan().to_string(),
+                LogLevel::WARN => format!("{: >5}", level).magenta().to_string(),
+                LogLevel::ERROR => format!("{: >5}", level).red().to_string(),
+                LogLevel::FATAL => format!("{: >5}", level).reverse().to_string(),
+                LogLevel::OTHER(_code) => level.to_string(),
+            }
+        }
+
+        if let Some(err) = validate_log_data_structure(&self) {
+            return Err(err);
+        }
+
+        let log_level: LogLevel = self.level.into();
+
+        // Write the [time]
+        let time = if _output_config.display_local_time {
+            self.time.with_timezone(&Local).format("%H:%M:%S%.3f")
+        } else {
+            self.time.format("%H:%M:%S%.3fZ")
+        }
+        .to_string();
+
+        w!(writer, "{}", time.bright_white());
+
+        // write the log [level] and app [name]
+        let level_right_indented = right_align_and_colorize_log_level(log_level);
+        w!(writer, " {} {}", level_right_indented, self.name);
 
         let other = &mut self.other.clone();
 

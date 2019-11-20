@@ -1,0 +1,6 @@
+07:28:40.510Z TRACE aclientreq: request sent
+    GET /--ping HTTP/1.1
+07:28:41.419Z TRACE aclientreq: Response received
+    HTTP/1.1 200 OK
+    request-id: e8a5a700-cfc7-11e5-a3dc-3b85d20f26ef
+    content-type: application/json

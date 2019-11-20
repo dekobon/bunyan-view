@@ -1,28 +1,30 @@
 #[macro_use]
 extern crate serde_derive;
+extern crate chrono;
+extern crate colored;
 extern crate httpstatus;
 extern crate serde;
 extern crate serde_json;
-extern crate colored;
 
 #[macro_use]
 mod macros;
+mod date_deserializer;
 mod divider_writer;
 mod errors;
-mod long_format_logger;
+mod formatting_logger;
 
 use crate::errors::LogLevelParseError;
 
+use std::borrow::Cow;
 use std::error::Error as StdError;
 use std::fmt;
 use std::io::{BufRead, Write};
-use std::borrow::Cow;
 
 use crate::errors::{Error, Kind, ParseResult};
+use chrono::prelude::*;
 use serde_json::map::Map;
 use serde_json::Error as SerdeError;
 use serde_json::Value;
-use colored::*;
 
 /// Default indent size in spaces
 const BASE_INDENT_SIZE: usize = 4;
@@ -55,11 +57,11 @@ impl LogLevel {
     pub fn as_string(&self) -> Cow<'static, str> {
         match *self {
             LogLevel::TRACE => "TRACE".into(),
-            LogLevel::DEBUG => "DEBUG".yellow().to_string().into(),
-            LogLevel::INFO => "INFO".cyan().to_string().into(),
-            LogLevel::WARN => "WARN".magenta().to_string().into(),
-            LogLevel::ERROR => "ERROR".red().to_string().into(),
-            LogLevel::FATAL => "FATAL".reverse().to_string().into(),
+            LogLevel::DEBUG => "DEBUG".into(),
+            LogLevel::INFO => "INFO".into(),
+            LogLevel::WARN => "WARN".into(),
+            LogLevel::ERROR => "ERROR".into(),
+            LogLevel::FATAL => "FATAL".into(),
             LogLevel::OTHER(_code) => format!("LVL{}", self.as_u16()).into(),
         }
     }
@@ -74,7 +76,7 @@ impl LogLevel {
             "WARN" => Ok(LogLevel::WARN),
             "ERROR" => Ok(LogLevel::ERROR),
             "FATAL" => Ok(LogLevel::FATAL),
-            _  => {
+            _ => {
                 let numeric_string = if level.starts_with("LVL") {
                     &level[3..]
                 } else {
@@ -87,10 +89,9 @@ impl LogLevel {
                         // Maybe there is a whitespace issue?
                         println!("Attempting to parse numeric string: {}", level);
                         Err(LogLevelParseError::from(level))
-                    },
+                    }
                 }
             }
-
         }
     }
 }
@@ -128,7 +129,8 @@ pub struct BunyanLine {
     component: Option<String>,
     level: u16,
     msg: String,
-    time: String,
+    #[serde(with = "date_deserializer")]
+    time: DateTime<Utc>,
     v: Option<u8>,
     #[serde(flatten)]
     other: Map<String, Value>,
@@ -140,10 +142,27 @@ pub trait Logger {
         writer: &mut W,
         output_config: &LoggerOutputConfig,
     ) -> ParseResult;
+
+    fn write_short_format<W: Write>(
+        &self,
+        writer: &mut W,
+        output_config: &LoggerOutputConfig,
+    ) -> ParseResult;
 }
 
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Clone, Hash)]
 pub enum LogFormat {
     Long,
+    Short,
+}
+
+impl LogFormat {
+    pub fn as_string(&self) -> Cow<'static, str> {
+        match *self {
+            LogFormat::Long => "long".into(),
+            LogFormat::Short => "short".into(),
+        }
+    }
 }
 
 pub trait LogWriter {
@@ -162,7 +181,10 @@ impl LogWriter for LogFormat {
         log: BunyanLine,
         output_config: &LoggerOutputConfig,
     ) -> ParseResult {
-        log.write_long_format(writer, output_config)
+        match output_config.format {
+            LogFormat::Long => log.write_long_format(writer, output_config),
+            LogFormat::Short => log.write_short_format(writer, output_config),
+        }
     }
 }
 
@@ -172,6 +194,8 @@ pub struct LoggerOutputConfig {
     pub is_strict: bool,
     pub is_debug: bool,
     pub level: Option<u16>,
+    pub display_local_time: bool,
+    pub format: LogFormat,
 }
 
 fn handle_error<W>(writer: &mut W, error: &Error, output_config: &LoggerOutputConfig)
@@ -208,16 +232,13 @@ where
     }
 }
 
-pub fn write_bunyan_output<W, R>(
-    writer: &mut W,
-    reader: R,
-    format: &LogFormat,
-    output_config: &LoggerOutputConfig,
-) where
+pub fn write_bunyan_output<W, R>(writer: &mut W, reader: R, output_config: &LoggerOutputConfig)
+where
     W: Write,
     R: BufRead,
 {
     let mut line_no: usize = 0;
+    let format = &output_config.format;
 
     reader.lines().for_each(|raw_line| {
         match raw_line {
@@ -293,7 +314,10 @@ mod tests {
             let level_string = test_level.as_string();
             let lower_case_level_string = level_string.to_ascii_lowercase();
 
-            println!("Attempting to parse string [{}] as log level literal", level_string);
+            println!(
+                "Attempting to parse string [{}] as log level literal",
+                level_string
+            );
 
             // test parsing uppercase
             match LogLevel::parse(level_string) {

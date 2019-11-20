@@ -5,11 +5,11 @@ extern crate flate2;
 extern crate pager;
 
 use bunyan_view::{LogFormat, LogLevel, LoggerOutputConfig};
-use clap::{App, AppSettings, ArgMatches, Arg};
+use clap::{App, AppSettings, Arg, ArgMatches};
 use flate2::read::GzDecoder;
+use pager::Pager;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use pager::Pager;
 
 fn main() {
     let env_var_help = "Environment Variables:
@@ -35,7 +35,8 @@ fn main() {
             .takes_value(false)
             .required(false))
         .arg(Arg::with_name("level")
-            .help("Only show messages at or above the specified level. You can specify level *names* or the internal numeric values.")
+            .help("Only show messages at or above the specified level.\
+            You can specify level *names* or the internal numeric values.")
             .long("level")
             .short("l")
             .takes_value(true)
@@ -60,6 +61,22 @@ fn main() {
             .long("no-color")
             .takes_value(false)
             .required(false))
+        .arg(Arg::with_name("output")
+            .help("Specify an output mode/format. One of
+  long: (the default) pretty
+  short: like \"long\", but more concise")
+            .long("output")
+            .short("o")
+            .takes_value(true)
+            .default_value("long")
+            .value_name("mode")
+            .required(false))
+        .arg(Arg::with_name("time-local")
+            .help("Display time field in local time, rather than UTC")
+            .long("time-local")
+            .short("L")
+            .takes_value(false)
+            .required(false))
         .arg(Arg::with_name("FILE")
             .help("Sets the input file(s) to use")
             .required(false)
@@ -78,11 +95,25 @@ fn main() {
         None => None,
     };
 
+    let format = match matches.value_of("output") {
+        Some(output_string) => match output_string.to_ascii_lowercase().as_ref() {
+            "long" => LogFormat::Long,
+            "short" => LogFormat::Short,
+            _mode => {
+                eprintln!("error: unknown output mode: \"{}\"", _mode);
+                std::process::exit(1);
+            }
+        },
+        None => LogFormat::Long,
+    };
+
     let output_config = LoggerOutputConfig {
         indent: 4,
         is_strict: matches.is_present("strict"),
         is_debug: matches.is_present("debug"),
         level,
+        display_local_time: matches.is_present("time-local"),
+        format,
     };
 
     apply_color_settings(&matches);
@@ -111,22 +142,12 @@ fn main() {
                     Box::new(BufReader::new(file))
                 };
 
-                bunyan_view::write_bunyan_output(
-                    &mut std::io::stdout(),
-                    reader,
-                    &LogFormat::Long,
-                    &output_config,
-                );
+                bunyan_view::write_bunyan_output(&mut std::io::stdout(), reader, &output_config);
             }
         }
         None => {
             let reader = Box::new(BufReader::new(std::io::stdin()));
-            bunyan_view::write_bunyan_output(
-                &mut std::io::stdout(),
-                reader,
-                &LogFormat::Long,
-                &output_config,
-            );
+            bunyan_view::write_bunyan_output(&mut std::io::stdout(), reader, &output_config);
         }
     }
 }
@@ -163,10 +184,7 @@ fn apply_color_settings(matches: &ArgMatches) {
     // If BUNYAN_NO_COLOR is set, we intentionally ignore the --color setting
     if matches.is_present("no-color") || ::std::env::var_os("BUNYAN_NO_COLOR").is_some() {
         colored::control::set_override(false);
-    // For clarity's sake we enable color when it is detected on the CLI as an explict conditional
-    } else if matches.is_present("color") {
-        colored::control::set_override(true);
-    // By default we colorize output
+    // Colorized output is the default
     } else {
         colored::control::set_override(true);
     }

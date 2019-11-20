@@ -1,0 +1,83 @@
+11:53:15.458Z DEBUG mls (/usr/local/lib/node_modules/manta/lib/client.js:806 in onResponse): get: error (req_id=021138ff-e2f9-4085-af18-f543adef05d2, path=/foo/stor, err.code=AccountDoesNotExist)
+    AccountDoesNotExistError: foo does not exist
+        at ClientRequest.onResponse (/usr/local/lib/node_modules/manta/node_modules/restify-clients/lib/HttpClient.js:217:26)
+        at ClientRequest.g (events.js:273:16)
+        at emitOne (events.js:90:13)
+        at ClientRequest.emit (events.js:182:7)
+        at HTTPParser.parserOnIncomingClient (_http_client.js:458:21)
+        at HTTPParser.parserOnHeadersComplete (_http_common.js:103:23)
+        at TLSSocket.socketOnData (_http_client.js:348:20)
+        at emitOne (events.js:90:13)
+        at TLSSocket.emit (events.js:182:7)
+        at readableAddChunk (_stream_readable.js:153:18)
+11:53:15.458Z DEBUG mls (/usr/local/lib/node_modules/manta/lib/client.js:806): get: error (req_id=021138ff-e2f9-4085-af18-f543adef05d2, path=/foo/stor, err.code=AccountDoesNotExist)
+    AccountDoesNotExistError: foo does not exist
+        at ClientRequest.onResponse (/usr/local/lib/node_modules/manta/node_modules/restify-clients/lib/HttpClient.js:217:26)
+        at ClientRequest.g (events.js:273:16)
+        at emitOne (events.js:90:13)
+        at ClientRequest.emit (events.js:182:7)
+        at HTTPParser.parserOnIncomingClient (_http_client.js:458:21)
+        at HTTPParser.parserOnHeadersComplete (_http_common.js:103:23)
+        at TLSSocket.socketOnData (_http_client.js:348:20)
+        at emitOne (events.js:90:13)
+        at TLSSocket.emit (events.js:182:7)
+        at readableAddChunk (_stream_readable.js:153:18)
+11:53:15.458Z DEBUG mls (/usr/local/lib/node_modules/manta/lib/client.js): get: error (req_id=021138ff-e2f9-4085-af18-f543adef05d2, path=/foo/stor, err.code=AccountDoesNotExist)
+    AccountDoesNotExistError: foo does not exist
+        at ClientRequest.onResponse (/usr/local/lib/node_modules/manta/node_modules/restify-clients/lib/HttpClient.js:217:26)
+        at ClientRequest.g (events.js:273:16)
+        at emitOne (events.js:90:13)
+        at ClientRequest.emit (events.js:182:7)
+        at HTTPParser.parserOnIncomingClient (_http_client.js:458:21)
+        at HTTPParser.parserOnHeadersComplete (_http_common.js:103:23)
+        at TLSSocket.socketOnData (_http_client.js:348:20)
+        at emitOne (events.js:90:13)
+        at TLSSocket.emit (events.js:182:7)
+        at readableAddChunk (_stream_readable.js:153:18)
+11:53:15.458Z DEBUG mls (/usr/local/lib/node_modules/manta/lib/client.js:806): get: error (req_id=021138ff-e2f9-4085-af18-f543adef05d2, path=/foo/stor, err.code=AccountDoesNotExist)
+    AccountDoesNotExistError: foo does not exist
+        at ClientRequest.onResponse (/usr/local/lib/node_modules/manta/node_modules/restify-clients/lib/HttpClient.js:217:26)
+        at ClientRequest.g (events.js:273:16)
+        at emitOne (events.js:90:13)
+        at ClientRequest.emit (events.js:182:7)
+        at HTTPParser.parserOnIncomingClient (_http_client.js:458:21)
+        at HTTPParser.parserOnHeadersComplete (_http_common.js:103:23)
+        at TLSSocket.socketOnData (_http_client.js:348:20)
+        at emitOne (events.js:90:13)
+        at TLSSocket.emit (events.js:182:7)
+        at readableAddChunk (_stream_readable.js:153:18)
+11:53:15.458Z DEBUG mls (/usr/local/lib/node_modules/manta/lib/client.js:806): get: error (req_id=021138ff-e2f9-4085-af18-f543adef05d2, path=/foo/stor, err.code=AccountDoesNotExist)
+    HTTP/1.1 200 OK
+    request-id: e8a5a700-cfc7-11e5-a3dc-3b85d20f26ef
+    content-type: application/json
+    --
+    AccountDoesNotExistError: foo does not exist
+        at ClientRequest.onResponse (/usr/local/lib/node_modules/manta/node_modules/restify-clients/lib/HttpClient.js:217:26)
+        at ClientRequest.g (events.js:273:16)
+        at emitOne (events.js:90:13)
+        at ClientRequest.emit (events.js:182:7)
+        at HTTPParser.parserOnIncomingClient (_http_client.js:458:21)
+        at HTTPParser.parserOnHeadersComplete (_http_common.js:103:23)
+        at TLSSocket.socketOnData (_http_client.js:348:20)
+        at emitOne (events.js:90:13)
+        at TLSSocket.emit (events.js:182:7)
+        at readableAddChunk (_stream_readable.js:153:18)
+11:53:15.458Z DEBUG mls (/usr/local/lib/node_modules/manta/lib/client.js:806): get: error (req_id=021138ff-e2f9-4085-af18-f543adef05d2, path=/foo/stor, err.code=AccountDoesNotExist)
+    HTTP/1.1 200 OK
+    HTTP/1.1 200 OK
+    Foo: bar
+    Date: Wed, 02 Aug 2017 22:37:34 GMT
+    Connection: keep-alive
+    Content-Length: 21
+    --
+    AccountDoesNotExistError: foo does not exist
+        at ClientRequest.onResponse (/usr/local/lib/node_modules/manta/node_modules/restify-clients/lib/HttpClient.js:217:26)
+        at ClientRequest.g (events.js:273:16)
+        at emitOne (events.js:90:13)
+        at ClientRequest.emit (events.js:182:7)
+        at HTTPParser.parserOnIncomingClient (_http_client.js:458:21)
+        at HTTPParser.parserOnHeadersComplete (_http_common.js:103:23)
+        at TLSSocket.socketOnData (_http_client.js:348:20)
+        at emitOne (events.js:90:13)
+        at TLSSocket.emit (events.js:182:7)
+        at readableAddChunk (_stream_readable.js:153:18)
