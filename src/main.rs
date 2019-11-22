@@ -75,6 +75,16 @@ You can specify level *names* or the internal numeric values.")
             .takes_value(true)
             .value_name("mode")
             .required(false))
+        .arg(Arg::with_name("json-mode")
+            .help("shortcut for `-o json`")
+            .short("j")
+            .takes_value(false)
+            .required(false))
+        .arg(Arg::with_name("bunyan-mode")
+            .help("shortcut for `-o json`")
+            .short("0")
+            .takes_value(false)
+            .required(false))
         .arg(Arg::with_name("time-local")
             .help("Display time field in local time, rather than UTC")
             .long("time-local")
@@ -112,7 +122,16 @@ You can specify level *names* or the internal numeric values.")
                 std::process::exit(1);
             }
         },
-        None => LogFormat::Long,
+        None => {
+            // Handle short form short-cuts
+            if matches.is_present("json-mode") {
+                LogFormat::Json(2)
+            } else if matches.is_present("bunyan-mode") {
+                LogFormat::Json(0)
+            } else {
+                LogFormat::Long
+            }
+        },
     };
 
     let output_config = LoggerOutputConfig {
