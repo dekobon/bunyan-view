@@ -63,6 +63,10 @@ You can specify level *names* or the internal numeric values.")
             .required(false))
         .arg(Arg::with_name("output")
             .help("Specify an output mode/format. One of
+  bunyan: 0 indented JSON, bunyan's native format
+  inspect: node.js `util.inspect` output
+  json: JSON output, 2-space indent
+  json-N: JSON output, N-space indent, e.g. \"json-4\"
   long: (the default) pretty
   short: like \"long\", but more concise
   simple: level, followed by \"-\" and then the message")
@@ -97,6 +101,9 @@ You can specify level *names* or the internal numeric values.")
 
     let format = match matches.value_of("output") {
         Some(output_string) => match output_string.to_ascii_lowercase().as_ref() {
+            "bunyan" => LogFormat::Json(0),
+            "json" => LogFormat::Json(2),
+            "inspect" => LogFormat::Inspect,
             "long" => LogFormat::Long,
             "short" => LogFormat::Short,
             "simple" => LogFormat::Simple,

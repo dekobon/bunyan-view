@@ -1,6 +1,6 @@
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, SecondsFormat, Utc};
 use serde::de::Error as DeError;
-use serde::{Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, Serializer};
 use std::error::Error as StdError;
 use std::fmt;
 
@@ -25,6 +25,14 @@ pub fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<DateTim
             time
         ))),
     }
+}
+
+pub fn serialize<S>(date: &DateTime<Utc>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let json_date = date.to_rfc3339_opts(SecondsFormat::Millis, true);
+    serializer.serialize_str(&json_date)
 }
 
 #[derive(Debug, Clone)]
