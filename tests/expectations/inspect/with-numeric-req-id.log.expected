@@ -1,0 +1,12 @@
+{
+  name: 'amon-master',
+  hostname: '9724a190-27b6-4fd8-830b-a574f839c67d',
+  pid: 12859,
+  route: 'HeadAgentProbes',
+  req_id: 888444,
+  level: 20,
+  contentMD5: '11FxOYiYfpMxmANj4kGJzg==',
+  msg: 'headAgentProbes respond',
+  time: '2012-08-08T10:25:47.636Z',
+  v: 0
+}

@@ -13,8 +13,10 @@ mod date_deserializer;
 mod divider_writer;
 mod errors;
 mod formatting_logger;
+mod inspect_logger;
 
 use crate::errors::LogLevelParseError;
+use crate::inspect_logger::write_inspect_line;
 
 use std::borrow::Cow;
 use std::error::Error as StdError;
@@ -31,6 +33,8 @@ use json_pretty::PrettyFormatter;
 
 /// Default indent size in spaces
 const BASE_INDENT_SIZE: usize = 4;
+/// Minimum fields needed to be a valid bunyan log line
+const REQUIRED_FIELDS: [&str; 6] = ["v", "level", "hostname", "pid", "time", "msg"];
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Clone, Hash)]
 pub enum LogLevel {
@@ -249,6 +253,29 @@ where
     }
 }
 
+fn write_zero_indent_json<W>(
+    writer: &mut W,
+    line: String,
+    output_config: &LoggerOutputConfig,
+    line_no: usize,
+) where
+    W: Write,
+{
+    let json_result: Result<Value, SerdeError> = serde_json::from_str(&line);
+    match json_result {
+        Ok(value) => match serde_json::to_string(&value) {
+            Ok(json) => wln!(writer, "{}", json),
+            Err(_) => panic!("Unable to write json string"),
+        },
+        Err(raw_error) => {
+            let column: usize = raw_error.column();
+            let kind = Kind::from(raw_error);
+            let error = Error::new(kind, line, line_no, Some(column));
+            handle_error(writer, &error, &output_config);
+        }
+    }
+}
+
 pub fn write_bunyan_output<W, R>(writer: &mut W, reader: R, output_config: &LoggerOutputConfig)
 where
     W: Write,
@@ -268,25 +295,37 @@ where
                 } else if let LogFormat::Json(indent) = format {
                     // single line JSON format
                     if *indent < 1 {
-                        let json_result: Result<Value, SerdeError> = serde_json::from_str(&line);
-                        match json_result {
-                            Ok(value) => match serde_json::to_string(&value) {
-                                Ok(json) => wln!(writer, "{}", json),
-                                Err(_) => panic!("Unable to write json string"),
-                            },
-                            Err(raw_error) => {
-                                let column: usize = raw_error.column();
-                                let kind = Kind::from(raw_error);
-                                let error = Error::new(kind, line, line_no, Some(column));
-                                handle_error(writer, &error, &output_config);
-                            }
-                        }
+                        write_zero_indent_json(writer, line, output_config, line_no);
                     // multi-line indented JSON format with custom indentation
                     } else {
                         let formatter = PrettyFormatter::from_str(&line).indent(*indent);
                         wln!(writer, "{}", formatter.pretty());
                     }
-                // Custom log format (eg long, short, simple, inspect)
+                // Inspect log format
+                } else if LogFormat::Inspect == *format {
+                    let json_result: Result<Map<String, Value>, SerdeError> =
+                        serde_json::from_str(&line);
+
+                    match json_result {
+                        Ok(map) => {
+                            let has_missing_fields = REQUIRED_FIELDS
+                                .iter()
+                                .any(|field| !map.contains_key(*field));
+                            // Write JSON-0 output if there are missing fields
+                            if has_missing_fields {
+                                write_zero_indent_json(writer, line, output_config, line_no);
+                            } else {
+                                write_inspect_line(writer, map);
+                            }
+                        }
+                        Err(raw_error) => {
+                            let column: usize = raw_error.column();
+                            let kind = Kind::from(raw_error);
+                            let error = Error::new(kind, line, line_no, Some(column));
+                            handle_error(writer, &error, &output_config);
+                        }
+                    }
+                // Custom log format (eg long, short, simple)
                 } else {
                     let json_result: Result<BunyanLine, SerdeError> = serde_json::from_str(&line);
                     match json_result {

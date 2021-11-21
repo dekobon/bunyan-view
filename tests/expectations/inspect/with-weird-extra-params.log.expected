@@ -1,0 +1,254 @@
+{
+  name: 'agent1',
+  pid: 73267,
+  req: null,
+  hostname: 'headnode',
+  level: 30,
+  msg: 'message',
+  time: '2012-05-08T16:57:55.586Z',
+  v: 0
+}
+{
+  name: 'agent1',
+  pid: 73267,
+  req: 3.14,
+  hostname: 'headnode',
+  level: 30,
+  msg: 'message',
+  time: '2012-05-08T16:57:55.586Z',
+  v: 0
+}
+{
+  name: 'agent1',
+  pid: 73267,
+  req: 'some-string',
+  hostname: 'headnode',
+  level: 30,
+  msg: 'message',
+  time: '2012-05-08T16:57:55.586Z',
+  v: 0
+}
+{
+  name: 'agent1',
+  pid: 73267,
+  req: [ 'a', 'b' ],
+  hostname: 'headnode',
+  level: 30,
+  msg: 'message',
+  time: '2012-05-08T16:57:55.586Z',
+  v: 0
+}
+{
+  name: 'agent1',
+  pid: 73267,
+  req: {
+    a: 'b'
+  },
+  hostname: 'headnode',
+  level: 30,
+  msg: 'message',
+  time: '2012-05-08T16:57:55.586Z',
+  v: 0
+}
+{
+  name: 'agent1',
+  pid: 73267,
+  req: {
+    a: {
+      b: 'c'
+    }
+  },
+  hostname: 'headnode',
+  level: 30,
+  msg: 'message',
+  time: '2012-05-08T16:57:55.586Z',
+  v: 0
+}
+{
+  name: 'agent1',
+  pid: 73267,
+  req: {
+    a: [ 'b', 'c' ]
+  },
+  hostname: 'headnode',
+  level: 30,
+  msg: 'message',
+  time: '2012-05-08T16:57:55.586Z',
+  v: 0
+}
+{
+  name: 'agent1',
+  pid: 73267,
+  wat: null,
+  hostname: 'headnode',
+  level: 30,
+  msg: 'message',
+  time: '2012-05-08T16:57:55.586Z',
+  v: 0
+}
+{
+  name: 'agent1',
+  pid: 73267,
+  wat: 3.14,
+  hostname: 'headnode',
+  level: 30,
+  msg: 'message',
+  time: '2012-05-08T16:57:55.586Z',
+  v: 0
+}
+{
+  name: 'agent1',
+  pid: 73267,
+  wat: 'some-string',
+  hostname: 'headnode',
+  level: 30,
+  msg: 'message',
+  time: '2012-05-08T16:57:55.586Z',
+  v: 0
+}
+{
+  name: 'agent1',
+  pid: 73267,
+  wat: [ 'a', 'b' ],
+  hostname: 'headnode',
+  level: 30,
+  msg: 'message',
+  time: '2012-05-08T16:57:55.586Z',
+  v: 0
+}
+{
+  name: 'agent1',
+  pid: 73267,
+  wat: {
+    a: 'b'
+  },
+  hostname: 'headnode',
+  level: 30,
+  msg: 'message',
+  time: '2012-05-08T16:57:55.586Z',
+  v: 0
+}
+{
+  name: 'agent1',
+  pid: 73267,
+  wat: {
+    a: {
+      b: 'c'
+    }
+  },
+  hostname: 'headnode',
+  level: 30,
+  msg: 'message',
+  time: '2012-05-08T16:57:55.586Z',
+  v: 0
+}
+{
+  name: 'agent1',
+  pid: 73267,
+  wat: {
+    a: [ 'b', 'c' ]
+  },
+  hostname: 'headnode',
+  level: 30,
+  msg: 'message',
+  time: '2012-05-08T16:57:55.586Z',
+  v: 0
+}
+{
+  name: 'agent1',
+  pid: 73267,
+  err: true,
+  hostname: 'headnode',
+  level: 30,
+  msg: 'message',
+  time: '2012-05-08T16:57:55.586Z',
+  v: 0
+}
+{
+  name: 'agent1',
+  pid: 73267,
+  err: false,
+  hostname: 'headnode',
+  level: 30,
+  msg: 'message',
+  time: '2012-05-08T16:57:55.586Z',
+  v: 0
+}
+{
+  name: 'agent1',
+  pid: 73267,
+  err: null,
+  hostname: 'headnode',
+  level: 30,
+  msg: 'message',
+  time: '2012-05-08T16:57:55.586Z',
+  v: 0
+}
+{
+  name: 'agent1',
+  pid: 73267,
+  err: 3.14,
+  hostname: 'headnode',
+  level: 30,
+  msg: 'message',
+  time: '2012-05-08T16:57:55.586Z',
+  v: 0
+}
+{
+  name: 'agent1',
+  pid: 73267,
+  err: 'some-string',
+  hostname: 'headnode',
+  level: 30,
+  msg: 'message',
+  time: '2012-05-08T16:57:55.586Z',
+  v: 0
+}
+{
+  name: 'agent1',
+  pid: 73267,
+  err: [ 'a', 'b' ],
+  hostname: 'headnode',
+  level: 30,
+  msg: 'message',
+  time: '2012-05-08T16:57:55.586Z',
+  v: 0
+}
+{
+  name: 'agent1',
+  pid: 73267,
+  err: {
+    a: 'b'
+  },
+  hostname: 'headnode',
+  level: 30,
+  msg: 'message',
+  time: '2012-05-08T16:57:55.586Z',
+  v: 0
+}
+{
+  name: 'agent1',
+  pid: 73267,
+  err: {
+    a: {
+      b: 'c'
+    }
+  },
+  hostname: 'headnode',
+  level: 30,
+  msg: 'message',
+  time: '2012-05-08T16:57:55.586Z',
+  v: 0
+}
+{
+  name: 'agent1',
+  pid: 73267,
+  err: {
+    a: [ 'b', 'c' ]
+  },
+  hostname: 'headnode',
+  level: 30,
+  msg: 'message',
+  time: '2012-05-08T16:57:55.586Z',
+  v: 0
+}

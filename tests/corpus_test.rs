@@ -734,3 +734,229 @@ fn simple_with_weird_extra_params() {
         LogFormat::Simple,
     );
 }
+
+// INSPECT FORMAT
+
+/* ============================================================================================== *\
+ * Test corpus files from node bunyan
+ * ============================================================================================== */
+
+#[test]
+fn inspect_format_simple() {
+    assert_equals_to_file(
+        "tests/corpus/simple.log",
+        "tests/expectations/inspect/simple.log.expected",
+        LogFormat::Inspect,
+    );
+}
+
+#[test]
+fn inspect_format_extrafield() {
+    assert_equals_to_file(
+        "tests/corpus/extrafield.log",
+        "tests/expectations/inspect/extrafield.log.expected",
+        LogFormat::Inspect,
+    );
+}
+
+#[test]
+fn inspect_format_bogus() {
+    assert_equals_to_file(
+        "tests/corpus/bogus.log",
+        "tests/expectations/inspect/bogus.log.expected",
+        LogFormat::Inspect,
+    );
+}
+
+#[test]
+fn inspect_format_withreq() {
+    assert_equals_to_file(
+        "tests/corpus/withreq.log",
+        "tests/expectations/inspect/withreq.log.expected",
+        LogFormat::Inspect,
+    );
+}
+
+#[test]
+fn inspect_format_all() {
+    assert_equals_to_file(
+        "tests/corpus/all.log",
+        "tests/expectations/inspect/all.log.expected",
+        LogFormat::Inspect,
+    );
+}
+
+#[test]
+fn inspect_client_req_with_address() {
+    assert_equals_to_file(
+        "tests/corpus/client-req-with-address.log",
+        "tests/expectations/inspect/client-req-with-address.log.expected",
+        LogFormat::Inspect,
+    );
+}
+
+#[test]
+fn inspect_client_reqres() {
+    assert_equals_to_file(
+        "tests/corpus/clientreqres.log",
+        "tests/expectations/inspect/clientreqres.log.expected",
+        LogFormat::Inspect,
+    );
+}
+
+#[test]
+fn inspect_content_length_zero_res() {
+    assert_equals_to_file(
+        "tests/corpus/content-length-0-res.log",
+        "tests/expectations/inspect/content-length-0-res.log.expected",
+        LogFormat::Inspect,
+    );
+}
+
+#[test]
+fn inspect_log_1() {
+    assert_equals_to_file(
+        "tests/corpus/log1.log",
+        "tests/expectations/inspect/log1.log.expected",
+        LogFormat::Inspect,
+    );
+}
+
+#[test]
+fn inspect_log_2() {
+    assert_equals_to_file(
+        "tests/corpus/log2.log",
+        "tests/expectations/inspect/log2.log.expected",
+        LogFormat::Inspect,
+    );
+}
+
+#[test]
+fn inspect_non_object_res() {
+    assert_equals_to_file(
+        "tests/corpus/non-object-res.log",
+        "tests/expectations/inspect/non-object-res.log.expected",
+        LogFormat::Inspect,
+    );
+}
+
+#[test]
+fn inspect_res_header() {
+    assert_equals_to_file(
+        "tests/corpus/res-header.log",
+        "tests/expectations/inspect/res-header.log.expected",
+        LogFormat::Inspect,
+    );
+}
+
+#[test]
+fn inspect_res_without_header() {
+    assert_equals_to_file(
+        "tests/corpus/res-without-header.log",
+        "tests/expectations/inspect/res-without-header.log.expected",
+        LogFormat::Inspect,
+    );
+}
+
+#[test]
+fn inspect_old_crashers_139() {
+    assert_equals_to_file(
+        "tests/corpus/old-crashers/139.log",
+        "tests/expectations/inspect/old-crashers/139.log.expected",
+        LogFormat::Inspect,
+    );
+}
+
+#[test]
+fn inspect_old_crashers_144() {
+    assert_equals_to_file(
+        "tests/corpus/old-crashers/144.log",
+        "tests/expectations/inspect/old-crashers/144.log.expected",
+        LogFormat::Inspect,
+    );
+}
+
+#[test]
+fn inspect_old_crashers_233() {
+    assert_equals_to_file(
+        "tests/corpus/old-crashers/233.log",
+        "tests/expectations/inspect/old-crashers/233.log.expected",
+        LogFormat::Inspect,
+    );
+}
+
+#[test]
+fn inspect_old_crashers_242() {
+    assert_equals_to_file(
+        "tests/corpus/old-crashers/242.log",
+        "tests/expectations/inspect/old-crashers/242.log.expected",
+        LogFormat::Inspect,
+    );
+}
+
+#[test]
+fn inspect_old_crashers_244() {
+    assert_equals_to_file(
+        "tests/corpus/old-crashers/244.log",
+        "tests/expectations/inspect/old-crashers/244.log.expected",
+        LogFormat::Inspect,
+    );
+}
+
+/* ============================================================================================== *\
+ * Test corpus files created for rust bunyan view
+ * ============================================================================================== */
+
+#[test]
+fn inspect_error_with_stack() {
+    assert_equals_to_file(
+        "tests/corpus/error-with-stack.log",
+        "tests/expectations/inspect/error-with-stack.log.expected",
+        LogFormat::Inspect,
+    );
+}
+
+#[test]
+fn inspect_req_with_newlines() {
+    assert_equals_to_file(
+        "tests/corpus/req-with-newlines.log",
+        "tests/expectations/inspect/req-with-newlines.log.expected",
+        LogFormat::Inspect,
+    );
+}
+
+#[test]
+fn inspect_req_with_trailers() {
+    assert_equals_to_file(
+        "tests/corpus/req-with-trailers.log",
+        "tests/expectations/inspect/req-with-trailers.log.expected",
+        LogFormat::Inspect,
+    );
+}
+
+#[test]
+fn inspect_res_with_empty_object() {
+    assert_equals_to_file(
+        "tests/corpus/res-with-empty-object.log",
+        "tests/expectations/inspect/res-with-empty-object.log.expected",
+        LogFormat::Inspect,
+    );
+}
+
+#[test]
+fn inspect_with_numeric_req_id() {
+    assert_equals_to_file(
+        "tests/corpus/with-numeric-req-id.log",
+        "tests/expectations/inspect/with-numeric-req-id.log.expected",
+        LogFormat::Inspect,
+    );
+}
+
+#[test]
+fn inspect_with_weird_extra_params() {
+    assert_equals_to_file(
+        "tests/corpus/with-weird-extra-params.log",
+        "tests/expectations/inspect/with-weird-extra-params.log.expected",
+        LogFormat::Inspect,
+    );
+}
