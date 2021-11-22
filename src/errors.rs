@@ -1,6 +1,6 @@
 use std::error::Error as StdError;
-use std::fmt;
 use std::num::ParseIntError;
+use std::{fmt, str};
 
 #[derive(Debug, Clone)]
 pub struct LogLevelParseError {
@@ -9,9 +9,7 @@ pub struct LogLevelParseError {
 
 impl From<String> for LogLevelParseError {
     fn from(s: String) -> Self {
-        LogLevelParseError {
-            input: s,
-        }
+        LogLevelParseError { input: s }
     }
 }
 
@@ -20,7 +18,7 @@ impl fmt::Display for LogLevelParseError {
         write!(
             f,
             "Unable to parse log level from input value: {}",
-            self.description()
+            self.to_string()
         )
     }
 }
@@ -81,14 +79,6 @@ impl fmt::Display for ParseIntFromJsonError {
 }
 
 impl StdError for ParseIntFromJsonError {
-    fn description(&self) -> &str {
-        match *self {
-            ParseIntFromJsonError::Structural(ref e) => e.description(),
-            // This already impls `Error`, so defer to its own implementation.
-            ParseIntFromJsonError::Numeric(ref e) => e.description(),
-        }
-    }
-
     fn cause(&self) -> Option<&dyn StdError> {
         match *self {
             ParseIntFromJsonError::Structural(ref e) => Some(e),
@@ -158,13 +148,6 @@ impl fmt::Display for Error {
 }
 
 impl StdError for Error {
-    fn description(&self) -> &str {
-        match self.inner.kind {
-            Kind::Json(ref e) => e.description(),
-            Kind::BunyanLogParse(ref e) => e.description(),
-        }
-    }
-
     #[allow(deprecated)]
     fn cause(&self) -> Option<&dyn StdError> {
         match self.inner.kind {

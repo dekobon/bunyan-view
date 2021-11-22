@@ -1,7 +1,7 @@
 use crate::BASE_INDENT_SIZE;
+use colored::*;
 use std::fmt::Arguments;
 use std::io::{Error, Write};
-use colored::*;
 
 /// Textual divider between log sections
 const DIVIDER: &str = "--\n";
@@ -40,7 +40,7 @@ impl<'a, W: Write> DividerWriter<'a, W> {
             DIVIDER.bright_blue(),
             indent = BASE_INDENT_SIZE
         )) {
-            panic!(e);
+            panic!("{}", e);
         }
 
         self.divider_written = true;

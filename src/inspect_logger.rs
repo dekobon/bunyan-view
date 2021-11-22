@@ -1,5 +1,4 @@
 use std::convert::TryInto;
-use std::fmt::format;
 use std::io::Write;
 
 use serde_json::map::Map;
@@ -183,9 +182,7 @@ fn format_long_line(string: String, indent: usize) -> String {
 /// * `string` - String to escape
 ///
 fn escape(src: String) -> String {
-    use std::fmt::Write;
     let mut escaped = String::with_capacity(src.len());
-    let mut utf16_buf = [0u16; 2];
     for c in src.chars() {
         match c {
             '\x08' => escaped += "\\b",

@@ -19,7 +19,6 @@ use crate::errors::LogLevelParseError;
 use crate::inspect_logger::write_inspect_line;
 
 use std::borrow::Cow;
-use std::error::Error as StdError;
 use std::fmt;
 use std::io::{BufRead, Write};
 
@@ -229,8 +228,8 @@ where
         let mut split = orig_msg.split(" line ");
 
         let msg = match split.next() {
-            Some(first) => first,
-            None => error.description(),
+            Some(first) => first.to_string(),
+            None => error.to_string(),
         };
 
         if output_config.is_debug {
@@ -355,7 +354,7 @@ where
                 }
             }
             Err(e) => {
-                panic!(e);
+                panic!("{}", e);
             }
         }
     });
@@ -400,13 +399,13 @@ mod tests {
             // test parsing uppercase
             match LogLevel::parse(level_string) {
                 Ok(level) => assert_eq!(level, test_level, "Unable to parse input to log level"),
-                Err(err) => panic!(err),
+                Err(err) => panic!("{}", err),
             }
 
             // test parsing lowercase
             match LogLevel::parse(lower_case_level_string) {
                 Ok(level) => assert_eq!(level, test_level, "Unable to parse input to log level"),
-                Err(err) => panic!(err),
+                Err(err) => panic!("{}", err),
             }
         }
     }

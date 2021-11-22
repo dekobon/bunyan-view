@@ -81,7 +81,7 @@ fn parse_timestamp(time: &str) -> Result<DateTime<Utc>, TimeStampParseError> {
             return Ok(parsed.with_timezone(&Utc));
         }
         Err(error) => {
-            parse_error.rfc3339_parse_error = Some(error.description().to_string());
+            parse_error.rfc3339_parse_error = Some(error.to_string());
         }
     }
 
@@ -90,7 +90,7 @@ fn parse_timestamp(time: &str) -> Result<DateTime<Utc>, TimeStampParseError> {
             return Ok(parsed.with_timezone(&Utc));
         }
         Err(error) => {
-            parse_error.rfc2822_parse_error = Some(error.description().to_string());
+            parse_error.rfc2822_parse_error = Some(error.to_string());
         }
     }
 
@@ -113,9 +113,9 @@ mod tests {
                 eprintln!(
                     "Error parsing [{}]: {}",
                     error.timestamp_input,
-                    error.description()
+                    error.to_string()
                 );
-                panic!(error)
+                panic!("{}", error)
             }
         }
     }
