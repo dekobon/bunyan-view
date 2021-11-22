@@ -2,7 +2,7 @@
 name = "bunyan_view"
 version = "0.2.0"
 authors = ["Elijah Zupancic <elijah@zupancic.name>"]
-edition = "2018"
+edition = "2021"
 
 [features]
 # this preserves the ordering of json
@@ -21,17 +21,17 @@ name = "bunyan"
 path = "src/main.rs"
 
 [dependencies]
-clap = "2.33.0"
+clap = "2.33"
 chrono = { version = "0.4", features = ["serde"] }
-json_pretty = "0.1.2"
+json_pretty = "0.1"
 serde = "1.0.102"
 serde_json = "1.0.41"
 serde_derive = "1.0.102"
-httpstatus = "0.1.0"
-flate2 = "1.0.13"
-colored = "1.9.0"
-pager = "0.15.0"
+httpstatus = "0.1"
+flate2 = "1.0"
+colored = "1.9"
+pager = "0.15"
 
 [dev-dependencies]
-bytes = "0.4.12"
-pretty_assertions = "0.6.1"
+bytes = "0.4"
+pretty_assertions = "0.6"
