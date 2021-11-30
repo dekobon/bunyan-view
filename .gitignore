@@ -144,4 +144,5 @@ Cargo.lock
 
 # End of https://www.gitignore.io/api/rust,clion,intellij
 
+.idea
 bunyan_run.sh
