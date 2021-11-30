@@ -131,7 +131,7 @@ You can specify level *names* or the internal numeric values.")
             } else {
                 LogFormat::Long
             }
-        },
+        }
     };
 
     let output_config = LoggerOutputConfig {
