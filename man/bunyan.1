@@ -1,0 +1,120 @@
+.\" The contents of this file is subject to the terms of the Mozilla Public
+.\" License, v. 2.0. If a copy of the MPL was not distributed with this
+.\" file, You can obtain one at http://mozilla.org/MPL/2.0/.
+.\"
+.\" Manpage for bunyan-view
+.\"
+.TH BUNYAN "1" "2021-11-30" "0.2.0" "bunyan-view"
+.SH NAME
+bunyan \- view bunyan format log files
+.SH SYNOPSIS
+bunyan [\fI\,FLAGS\/\fR] [\fI\,OPTIONS\/\fR] [\fI\,FILE\/\fR]...
+.SH DESCRIPTION
+bunyan displays bunyan JSON format log files to the console in a easy
+to read colorful format.
+.SH FLAGS
+.TP
+\fB\-\-d, \-\-debug\fR
+Display deserialization errors and expectation mismatches to STDERR.
+.TP
+\fB\-\-strict\fR
+Suppress all but legal Bunyan JSON log lines. By default non-JSON,
+and non-bunyan lines are passed through.
+.TP
+\fB\-\-pager\fR
+Pipe output into `less` (or $PAGER if set), if stdout is a TTY.
+This overrides $BUNYAN_NO_PAGER.
+.TP
+\fB\-\-no-pager\fR
+Do not pipe output into a pager.
+.TP
+\fB\-\-color\fR
+Force coloring even if terminal doesn't support it.
+.TP
+\fB\-\-no-color\fR
+Force no coloring (e.g. terminal doesn't support it).
+.TP
+\fB\-j\fR
+shortcut for `\-o json`.
+.TP
+\fB\-0\fR
+shortcut for `\-o json`.
+.TP
+\fB\-L, \-\-time\-local\fR
+Display time field in local time, rather than UTC.
+.TP
+\fB\-h, \-\-help\fR
+Prints help information.
+.TP
+\fB\-V, \-\-version\fR
+Prints version information.
+
+.SH OPTIONS
+.TP
+\fB\-l, \-\-level <level>\fR
+Only show messages at or above the specified level.
+You can specify level *names* or the internal numeric values.
+.TP
+\fB\-o, \-\-output <mode>\fR
+Specify an output mode/format. One of the following:
+.RS 12
+\fBbunyan\fR: 0 indented JSON, bunyan's native format
+.br
+\fBinspect\fR: node.js `util.inspect` output
+.br
+\fBjson\fR: JSON output, 2-space indent
+.br
+\fBjson-N\fR: JSON output, N-space indent, e.g. "json-4"
+.br
+\fBlong\fR: (the default) pretty
+.br
+\fBshort\fR: like "long", but more concise
+.br
+\fBsimple\fR: level, followed by "-" and then the message
+
+.SH "EXIT STATUS"
+If there were no problems during execution, bunyan will exit
+with the value of zero. Otherwise, if there were problems
+it will exit with the value of one.
+
+.SH ENVIRONMENT
+\fBBUNYAN_NO_COLOR\fR \- Set to a non-empty value to force no
+output coloring. See: \fB\-\-no-color\fR
+.br
+\fBBUNYAN_NO_PAGER\fR \- Set to a non-empty value to disable
+piping output to a pager. See: \fB\-\-no-pager\fR
+
+.SH EXAMPLES
+Directly viewing one or more bunyan log files:
+.IP
+\fBbunyan logs/logs-001.log logs/logs-002.log logs/big-log-003.log.gz\fR
+.P
+View logs via piped input:
+.IP
+\fBcat logs/logs-001.log | bunyan\fR
+.P
+Alternatively:
+.IP
+\fBbunyan < logs/logs-001.log\fR
+
+.SH "REPORTING BUGS"
+Report any issues on the project issue tracker at:
+.br
+\fB<https://github.com/dekobon/bunyan-view/issues>\fR
+
+.SH ACKNOWLEDGEMENTS
+Much gratitude is owed to the original creator of bunyan logging:
+Trent Mick
+
+.SH "SEE ALSO"
+Bunyan for node.js: \fB<https://github.com/trentm/node-bunyan>\fR
+
+.SH AUTHOR
+Elijah Zupancic \fB<elijah@zupancic\.name>\fR
+
+.SH COPYRIGHT
+Copyright \(co 2021 Elijah Zupancic. All Rights Reserved.
+.br
+License: Mozilla Public License 2.0 (MPL-2.0)
+.br
+Full License Text: <http://mozilla.org/MPL/2.0/>
