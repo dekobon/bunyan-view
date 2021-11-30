@@ -1,4 +1,4 @@
-[![Rust](https://github.com/dekobon/bunyan-view/actions/workflows/ci.yaml/badge.svg)](https://github.com/dekobon/bunyan-view/actions/workflows/ci.yaml)
+[![Rust](https://github.com/dekobon/bunyan-view/actions/workflows/ci.yaml/badge.svg)](https://github.com/dekobon/bunyan-view/actions/workflows/ci.yaml) ![Crates.io](https://img.shields.io/crates/v/bunyan_view) ![Crates.io](https://img.shields.io/crates/d/bunyan_view) 
 
 # Bunyan Viewer
 
@@ -47,7 +47,7 @@ Bunyan Viewer does not yet support the following:
 
 Install the Bunyan Viewer into your [Cargo Crates](https://crates.io/) enabled environment by:
 ```
-  cargo install
+  cargo install bunyan_view
 ```
 
 ## Usage
