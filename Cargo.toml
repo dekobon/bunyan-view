@@ -43,3 +43,16 @@ pager = "0.15"
 [dev-dependencies]
 bytes = "0.4"
 pretty_assertions = "0.6"
+
+[package.metadata.deb]
+copyright = "2021, Elijah Zupancic <elijah@zupancic.name>"
+license-file = ["LICENSE.txt", "0"]
+extended-description = """\
+A utility for displaying bunyan JSON format log files \
+to the console in a easy to read colorful format."""
+section = "utility"
+priority = "optional"
+assets = [
+    ["target/release/bunyan", "usr/bin/", "755"],
+    ["target/man/bunyan.1.gz", "usr/share/man/man1/", "644"]
+]
