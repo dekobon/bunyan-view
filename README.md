@@ -45,7 +45,8 @@ Bunyan Viewer does not yet support the following:
 
 ## Installation
 
-Install the Bunyan Viewer into your [Cargo Crates](https://crates.io/) enabled environment by:
+Install the Bunyan Viewer into your [Cargo Crates](https://crates.io/) enabled environment by
+installing the [crate](https://crates.io/crates/bunyan_view):
 ```
   cargo install bunyan_view
 ```
