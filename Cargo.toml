@@ -44,6 +44,9 @@ pager = "0.15"
 bytes = "0.4"
 pretty_assertions = "0.6"
 
+[profile.release]
+lto = true
+
 [package.metadata.deb]
 copyright = "2021, Elijah Zupancic <elijah@zupancic.name>"
 license-file = ["LICENSE.txt", "0"]
