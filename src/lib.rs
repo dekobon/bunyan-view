@@ -83,8 +83,8 @@ impl LogLevel {
             "ERROR" => Ok(LogLevel::ERROR),
             "FATAL" => Ok(LogLevel::FATAL),
             _ => {
-                let numeric_string = if level.starts_with("LVL") {
-                    &level[3..]
+                let numeric_string = if let Some(stripped) = level.strip_prefix("LVL") {
+                    stripped
                 } else {
                     &level
                 };
@@ -270,7 +270,7 @@ fn write_zero_indent_json<W>(
             let column: usize = raw_error.column();
             let kind = Kind::from(raw_error);
             let error = Error::new(kind, line, line_no, Some(column));
-            handle_error(writer, &error, &output_config);
+            handle_error(writer, &error, output_config);
         }
     }
 }
@@ -321,7 +321,7 @@ where
                             let column: usize = raw_error.column();
                             let kind = Kind::from(raw_error);
                             let error = Error::new(kind, line, line_no, Some(column));
-                            handle_error(writer, &error, &output_config);
+                            handle_error(writer, &error, output_config);
                         }
                     }
                 // Custom log format (eg long, short, simple)
@@ -340,7 +340,7 @@ where
                                 if let Err(e) = result {
                                     let kind = Kind::from(e);
                                     let error = Error::new(kind, line, line_no, None);
-                                    handle_error(writer, &error, &output_config);
+                                    handle_error(writer, &error, output_config);
                                 }
                             }
                         }
@@ -348,7 +348,7 @@ where
                             let column: usize = raw_error.column();
                             let kind = Kind::from(raw_error);
                             let error = Error::new(kind, line, line_no, Some(column));
-                            handle_error(writer, &error, &output_config);
+                            handle_error(writer, &error, output_config);
                         }
                     }
                 }

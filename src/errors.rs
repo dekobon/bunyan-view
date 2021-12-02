@@ -18,7 +18,7 @@ impl fmt::Display for LogLevelParseError {
         write!(
             f,
             "Unable to parse log level from input value: {}",
-            self.to_string()
+            self.input
         )
     }
 }

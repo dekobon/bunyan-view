@@ -247,19 +247,21 @@ fn write_all_extra_params<W: Write>(
             return;
         }
 
-        if caller_option.is_some() && node.is_array() {
-            let value = stringify(caller_option.unwrap(), node, None, details);
-            if let Some(text) = value {
-                write_formatting(writer, is_first);
-                w!(writer, "{}={}\n", caller_option.unwrap(), text);
+        if let Some(caller_option_value) = caller_option {
+            if node.is_array() {
+                let value = stringify(caller_option_value, node, None, details);
+                if let Some(text) = value {
+                    write_formatting(writer, is_first);
+                    w!(writer, "{}={}\n", caller_option_value, text);
+                }
+                return;
             }
-            return;
         }
 
         let map = node.as_object().unwrap();
 
         for (k, v) in map.iter() {
-            if exclude(&k.as_str()) {
+            if exclude(k.as_str()) {
                 continue;
             }
 
@@ -523,7 +525,7 @@ fn json_string_or_number_as_u16(val: &Value) -> Result<u16, ParseIntFromJsonErro
     match val {
         Value::Number(number) => {
             if let Some(code) = number.as_u64() {
-                if code > u64::from(std::u16::MAX) {
+                if code > u64::from(u16::MAX) {
                     let err = BunyanLogParseError::new(format!(
                         "Number is greater than u16 bounds: {}",
                         code
@@ -625,15 +627,15 @@ fn write_res<W: Write>(writer: &mut W, key: &str, other: &mut Map<String, Value>
                 indent = BASE_INDENT_SIZE
             );
 
-            let color = if code >= 100 && code <= 199 {
+            let color = if (100..=199).contains(&code) {
                 "blue"
-            } else if code >= 200 && code <= 299 {
+            } else if (200..=299).contains(&code) {
                 "green"
-            } else if code >= 300 && code <= 399 {
+            } else if (300..=399).contains(&code) {
                 "magenta"
-            } else if code >= 400 && code <= 499 {
+            } else if (400..=499).contains(&code) {
                 "yellow"
-            } else if code >= 500 && code <= 599 {
+            } else if (500..=599).contains(&code) {
                 "red"
             } else {
                 "white"
@@ -855,19 +857,19 @@ fn validate_log_data_structure(line: &BunyanLine) -> Option<BunyanLogParseError>
     if let Some(ref src) = line.other.get("src") {
         match src {
             Value::Object(src_map) => {
-                if let Some(ref file) = src_map.get("file") {
+                if let Some(file) = src_map.get("file") {
                     if !file.is_string() {
                         return Some(BunyanLogParseError::new("[src.file] must be a string"));
                     }
                 }
-                if let Some(ref line) = src_map.get("line") {
+                if let Some(line) = src_map.get("line") {
                     if !(line.is_string() || line.is_number()) {
                         return Some(BunyanLogParseError::new(
                             "[src.line] must be a number or string",
                         ));
                     }
                 }
-                if let Some(ref func) = src_map.get("func") {
+                if let Some(func) = src_map.get("func") {
                     if !func.is_string() {
                         return Some(BunyanLogParseError::new("[src.func] must be a string"));
                     }
@@ -883,7 +885,7 @@ fn validate_log_data_structure(line: &BunyanLine) -> Option<BunyanLogParseError>
     }
 
     // Validate req_id
-    if let Some(ref req_id) = line.other.get("req_id") {
+    if let Some(req_id) = line.other.get("req_id") {
         if !(req_id.is_string() || req_id.is_number() || req_id.is_null()) {
             return Some(BunyanLogParseError::new(
                 "[req_id] must be a string or number",
@@ -892,7 +894,7 @@ fn validate_log_data_structure(line: &BunyanLine) -> Option<BunyanLogParseError>
     }
 
     // Validate req
-    if let Some(ref client_req) = line.other.get("req") {
+    if let Some(client_req) = line.other.get("req") {
         if let Some(body) = client_req.get("body") {
             if body.is_array() {
                 return Some(BunyanLogParseError::new(
@@ -903,15 +905,15 @@ fn validate_log_data_structure(line: &BunyanLine) -> Option<BunyanLogParseError>
     }
 
     // Validate client_req
-    if let Some(ref client_req) = line.other.get("client_req") {
-        if let Some(ref address) = client_req.get("address") {
+    if let Some(client_req) = line.other.get("client_req") {
+        if let Some(address) = client_req.get("address") {
             if !(address.is_string() || address.is_number() || address.is_null()) {
                 return Some(BunyanLogParseError::new(
                     "[client_req.address] value must be a string",
                 ));
             }
         }
-        if let Some(ref port) = client_req.get("port") {
+        if let Some(port) = client_req.get("port") {
             if !(port.is_string() || port.is_number() || port.is_null()) {
                 return Some(BunyanLogParseError::new(
                     "[client_req.port] value must be a string or number",
@@ -929,8 +931,8 @@ fn validate_log_data_structure(line: &BunyanLine) -> Option<BunyanLogParseError>
     }
 
     // Validate res
-    if let Some(ref res) = line.other.get("res") {
-        if let Some(ref res_map) = res.as_object() {
+    if let Some(res) = line.other.get("res") {
+        if let Some(res_map) = res.as_object() {
             if let Some(headers) = find_headers(res_map) {
                 if !(headers.is_object() || headers.is_string()) {
                     return Some(BunyanLogParseError::new(
@@ -940,7 +942,7 @@ fn validate_log_data_structure(line: &BunyanLine) -> Option<BunyanLogParseError>
             }
         }
 
-        if let Some(ref status_code) = res.get("statusCode") {
+        if let Some(status_code) = res.get("statusCode") {
             if let Err(e) = json_string_or_number_as_u16(status_code) {
                 let msg = format!("Invalid status code on res: {}", e);
                 return Some(BunyanLogParseError::new(msg));
@@ -949,8 +951,8 @@ fn validate_log_data_structure(line: &BunyanLine) -> Option<BunyanLogParseError>
     }
 
     // Validate client_res
-    if let Some(ref res) = line.other.get("client_res") {
-        if let Some(ref res_map) = res.as_object() {
+    if let Some(res) = line.other.get("client_res") {
+        if let Some(res_map) = res.as_object() {
             if let Some(headers) = find_headers(res_map) {
                 if !(headers.is_object() || headers.is_string()) {
                     return Some(BunyanLogParseError::new(
@@ -972,7 +974,7 @@ fn validate_log_data_structure(line: &BunyanLine) -> Option<BunyanLogParseError>
             }
         }
 
-        if let Some(ref status_code) = res.get("statusCode") {
+        if let Some(status_code) = res.get("statusCode") {
             if let Err(e) = json_string_or_number_as_u16(status_code) {
                 let msg = format!("Invalid status code on client_res: {}", e);
                 return Some(BunyanLogParseError::new(msg));
@@ -1001,7 +1003,7 @@ impl Logger for BunyanLine {
             }
         }
 
-        if let Some(err) = validate_log_data_structure(&self) {
+        if let Some(err) = validate_log_data_structure(self) {
             return Err(err);
         }
 
@@ -1118,7 +1120,7 @@ impl Logger for BunyanLine {
             }
         }
 
-        if let Some(err) = validate_log_data_structure(&self) {
+        if let Some(err) = validate_log_data_structure(self) {
             return Err(err);
         }
 
@@ -1209,7 +1211,7 @@ impl Logger for BunyanLine {
         writer: &mut W,
         _output_config: &LoggerOutputConfig,
     ) -> ParseResult {
-        if let Some(err) = validate_log_data_structure(&self) {
+        if let Some(err) = validate_log_data_structure(self) {
             return Err(err);
         }
 

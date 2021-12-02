@@ -156,21 +156,20 @@ where
 fn format_long_line(string: String, indent: usize) -> String {
     // New lines are replaced with the \n in the JS inspect format
     let newline = format!("\\n' +\n{}'", " ".repeat(indent));
-    let ends_with_newline = string.ends_with("\n");
+    let ends_with_newline = string.ends_with('\n');
     let escaped = escape(string);
     let trimmed = if ends_with_newline {
         escaped.trim_end().to_string()
     } else {
         escaped
     };
-    let replaced = trimmed.replace("\n", newline.as_str());
-    let line = if ends_with_newline {
+    let replaced = trimmed.replace('\n', newline.as_str());
+
+    if ends_with_newline {
         format!("{}{}", replaced, "\\n")
     } else {
         replaced
-    };
-
-    return line;
+    }
 }
 
 /// Escapes a string with slash style escapes.

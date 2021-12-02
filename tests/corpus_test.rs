@@ -17,13 +17,12 @@ fn assert_equals_to_file(filename: &str, expected_filename: &str, format: LogFor
     let mut expected_file = File::open(expected_filename).expect("file not found");
 
     let mut expected = String::new();
-    expected_file.read_to_string(&mut expected).expect(
-        &[
-            "There was a problem opening the expectation file: ",
-            expected_filename,
-        ]
-        .concat(),
-    );
+    let msg = &[
+        "There was a problem opening the expectation file: ",
+        expected_filename,
+    ]
+    .concat();
+    expected_file.read_to_string(&mut expected).expect(msg);
 
     let output_config = LoggerOutputConfig {
         indent: 4,
