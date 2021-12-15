@@ -45,10 +45,18 @@ struct TimeStampParseError {
 impl fmt::Display for TimeStampParseError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if let Some(error) = &self.rfc2822_parse_error {
-            return write!(f, "RFC2822 Parse Error: {}", error);
+            return write!(
+                f,
+                "RFC2822 Parse Error: {}\nInput: {}",
+                error, self.timestamp_input
+            );
         }
         if let Some(error) = &self.rfc3339_parse_error {
-            return write!(f, "RFC3339 Parse Error: {}", error);
+            return write!(
+                f,
+                "RFC3339 Parse Error: {}\nInput: {}",
+                error, self.timestamp_input
+            );
         }
 
         write!(f, "No errors")
