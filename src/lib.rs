@@ -287,23 +287,24 @@ where
         match raw_line {
             Ok(line) => {
                 line_no += 1;
+                let trimmed = line.trim_start().to_string();
 
                 // Don't process empty lines because the output isn't useful to our users
-                if !output_config.is_strict && line.trim().is_empty() {
+                if !output_config.is_strict && trimmed.trim_end().is_empty() {
                     wln!(writer);
                 } else if let LogFormat::Json(indent) = format {
                     // single line JSON format
                     if *indent < 1 {
-                        write_zero_indent_json(writer, line, output_config, line_no);
+                        write_zero_indent_json(writer, trimmed, output_config, line_no);
                     // multi-line indented JSON format with custom indentation
                     } else {
-                        let formatter = PrettyFormatter::from_str(&line).indent(*indent);
+                        let formatter = PrettyFormatter::from_str(&trimmed).indent(*indent);
                         wln!(writer, "{}", formatter.pretty());
                     }
                 // Inspect log format
                 } else if LogFormat::Inspect == *format {
                     let json_result: Result<Map<String, Value>, SerdeError> =
-                        serde_json::from_str(&line);
+                        serde_json::from_str(&trimmed);
 
                     match json_result {
                         Ok(map) => {
@@ -312,7 +313,7 @@ where
                                 .any(|field| !map.contains_key(*field));
                             // Write JSON-0 output if there are missing fields
                             if has_missing_fields {
-                                write_zero_indent_json(writer, line, output_config, line_no);
+                                write_zero_indent_json(writer, trimmed, output_config, line_no);
                             } else {
                                 write_inspect_line(writer, map);
                             }
@@ -320,13 +321,14 @@ where
                         Err(raw_error) => {
                             let column: usize = raw_error.column();
                             let kind = Kind::from(raw_error);
-                            let error = Error::new(kind, line, line_no, Some(column));
+                            let error = Error::new(kind, trimmed, line_no, Some(column));
                             handle_error(writer, &error, output_config);
                         }
                     }
                 // Custom log format (eg long, short, simple)
                 } else {
-                    let json_result: Result<BunyanLine, SerdeError> = serde_json::from_str(&line);
+                    let json_result: Result<BunyanLine, SerdeError> =
+                        serde_json::from_str(&trimmed);
                     match json_result {
                         Ok(log) => {
                             let write_log = if let Some(output_level) = output_config.level {
@@ -339,7 +341,7 @@ where
                                 let result = format.write_log(writer, log, output_config);
                                 if let Err(e) = result {
                                     let kind = Kind::from(e);
-                                    let error = Error::new(kind, line, line_no, None);
+                                    let error = Error::new(kind, trimmed, line_no, None);
                                     handle_error(writer, &error, output_config);
                                 }
                             }
@@ -347,7 +349,7 @@ where
                         Err(raw_error) => {
                             let column: usize = raw_error.column();
                             let kind = Kind::from(raw_error);
-                            let error = Error::new(kind, line, line_no, Some(column));
+                            let error = Error::new(kind, trimmed, line_no, Some(column));
                             handle_error(writer, &error, output_config);
                         }
                     }
