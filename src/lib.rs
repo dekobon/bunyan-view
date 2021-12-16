@@ -92,8 +92,7 @@ impl LogLevel {
                 match numeric_string.parse::<u16>() {
                     Ok(code) => Ok(LogLevel::OTHER(code)),
                     Err(_) => {
-                        // Maybe there is a whitespace issue?
-                        println!("Attempting to parse numeric string: {}", level);
+                        eprintln!("Attempting to parse numeric string: {}", level);
                         Err(LogLevelParseError::from(level))
                     }
                 }
