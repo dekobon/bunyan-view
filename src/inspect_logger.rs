@@ -188,7 +188,7 @@ fn escape(src: String) -> String {
             '\x0c' => escaped += "\\f",
             '\r' => escaped += "\\r",
             '\t' => escaped += "\\t",
-            _ => (escaped.push(c)),
+            _ => escaped.push(c),
         }
     }
     escaped
