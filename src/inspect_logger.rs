@@ -56,7 +56,7 @@ where
             let line = if string.len() > 80 {
                 format_long_line(string, indent)
             } else {
-                escape(string).replace("\n", "\\n")
+                escape(string).replace('\n', "\\n")
             };
 
             w!(writer, "{}{}{}", "'".green(), line.green(), "'".green());

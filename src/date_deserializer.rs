@@ -11,6 +11,7 @@ use std::fmt;
 ///
 pub fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<DateTime<Utc>, D::Error> {
     let deserialize_result = Deserialize::deserialize(deserializer);
+    #[allow(clippy::question_mark)]
     if let Err(err) = deserialize_result {
         return Err(err);
     }
