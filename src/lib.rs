@@ -9,6 +9,7 @@ extern crate serde_json;
 
 #[macro_use]
 mod macros;
+mod condition_filter;
 mod date_deserializer;
 mod divider_writer;
 mod errors;
@@ -17,6 +18,8 @@ mod inspect_logger;
 
 use crate::errors::LogLevelParseError;
 use crate::inspect_logger::write_inspect_line;
+
+pub use crate::condition_filter::ConditionFilter;
 
 use std::borrow::Cow;
 use std::fmt;
@@ -213,6 +216,7 @@ pub struct LoggerOutputConfig {
     pub is_strict: bool,
     pub is_debug: bool,
     pub level: Option<u16>,
+    pub condition_filter: Option<ConditionFilter>,
     pub display_local_time: bool,
     pub format: LogFormat,
 }
@@ -330,10 +334,12 @@ where
                         serde_json::from_str(&trimmed);
                     match json_result {
                         Ok(log) => {
-                            let write_log = if let Some(output_level) = output_config.level {
-                                output_level <= log.level
-                            } else {
-                                true
+                            let write_log = match output_config.level {
+                                Some(output_level) => output_level <= log.level,
+                                None => true,
+                            } && match &output_config.condition_filter {
+                                Some(condition_filter) => condition_filter.filter(line.as_str()),
+                                None => true,
                             };
 
                             if write_log {

@@ -29,6 +29,7 @@ fn assert_equals_to_file(filename: &str, expected_filename: &str, format: LogFor
         is_debug: false,
         is_strict: false,
         level: None,
+        condition_filter: None,
         display_local_time: false,
         format,
     };

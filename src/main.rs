@@ -4,7 +4,7 @@ extern crate bunyan_view;
 extern crate flate2;
 extern crate pager;
 
-use bunyan_view::{LogFormat, LogLevel, LoggerOutputConfig};
+use bunyan_view::{ConditionFilter, LogFormat, LogLevel, LoggerOutputConfig};
 use clap::{App, AppSettings, Arg, ArgMatches};
 use flate2::read::GzDecoder;
 use pager::Pager;
@@ -39,6 +39,20 @@ fn main() {
 You can specify level *names* or the internal numeric values.")
             .long("level")
             .short("l")
+            .takes_value(true)
+            .required(false))
+        .arg(Arg::with_name("condition")
+            .help(r#"Run each log message through the condition and only show those that return truish.
+E.g.:
+  -c 'this.pid == 123'
+  -c 'this.level == DEBUG'
+  -c 'this.msg.indexOf("boom") != -1'
+"CONDITION" must be (somewhat) legal JS code.
+`this` holds the log record.
+The TRACE, DEBUG, ... FATAL values are defined to help with comparing `this.level`.
+            "#)
+            .long("condition")
+            .short("c")
             .takes_value(true)
             .required(false))
         .arg(Arg::with_name("pager")
@@ -109,6 +123,8 @@ You can specify level *names* or the internal numeric values.")
         None => None,
     };
 
+    let condition_filter = matches.value_of("condition").map(ConditionFilter::new);
+
     let format = match matches.value_of("output") {
         Some(output_string) => match output_string.to_ascii_lowercase().as_ref() {
             "bunyan" => LogFormat::Json(0),
@@ -139,6 +155,7 @@ You can specify level *names* or the internal numeric values.")
         is_strict: matches.is_present("strict"),
         is_debug: matches.is_present("debug"),
         level,
+        condition_filter,
         display_local_time: matches.is_present("time-local"),
         format,
     };

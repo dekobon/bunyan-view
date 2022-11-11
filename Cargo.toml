@@ -39,6 +39,7 @@ httpstatus = "0.1"
 flate2 = "1.0"
 colored = "1.9"
 pager = "0.15"
+quick-js = "0.4"
 
 [dev-dependencies]
 bytes = "0.4"
