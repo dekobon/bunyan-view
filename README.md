@@ -41,7 +41,6 @@ Bunyan Viewer supports the following features:
 
 Bunyan Viewer does not yet support the following:
  * Runtime log snooping via DTrace (`-p` flag)
- * Conditional filtering (`-c, --condition` flag)
 
 ## Installation
 
