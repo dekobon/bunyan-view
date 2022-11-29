@@ -61,8 +61,8 @@ target/man/bunyan.1.gz:
 	$Q $(SED) -i 's/%%VERSION%%/$(VERSION)/' target/man/bunyan.1
 	$Q gzip target/man/bunyan.1
 
-.PHONY: manpage ## Builds man page
-manpage: target/man/bunyan.1.gz
+.PHONY: manpage
+manpage: target/man/bunyan.1.gz ## Builds man page
 
 .PHONY: install-packaging-tools
 install-packaging-tools: ## Installs tools needed for building distributable packages
@@ -75,4 +75,4 @@ target/debian/bunyan_view_%.deb: target/man/bunyan.1.gz
 	fi
 
 .PHONY: debian-package
-debian-package: install-packaging-tools target/debian/bunyan_view_$(VERSION)_$(DEB_ARCH).deb
+debian-package: install-packaging-tools manpage target/debian/bunyan_view_$(VERSION)_$(DEB_ARCH).deb ## Creates a debian package for the current platform
