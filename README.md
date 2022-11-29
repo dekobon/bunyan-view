@@ -28,7 +28,8 @@ Bunyan Viewer supports the following features:
    - `long`: (the default) pretty
    - `short`: like "long", but more concise
    - `simple`: level, followed by "-" and then the message`
- * Local time conversion (`-L, --time-local` flage)
+ * Support for conditional matching (`--condition` flag)
+ * Local time conversion (`-L, --time-local` flag)
  * Filtering by level (`-l, --level` flag)
  * Strict mode (`--strict` flag)
  * Optional colorization - with a few extra colors sprinkled in (`--color` flag)
