@@ -11,6 +11,7 @@ GREP              ?= $(shell command -v ggrep 2> /dev/null || command -v grep 2>
 SED               ?= $(shell command -v gsed 2> /dev/null || command -v sed 2> /dev/null)
 AWK               ?= $(shell command -v gawk 2> /dev/null || command -v awk 2> /dev/null)
 DEB_ARCH          := $(shell uname -m | $(SED) -e 's/x86_64/amd64/g' -e 's/i686/i386/g')
+RPM_ARCH          := $(shell uname -m)
 VERSION           ?= $(shell $(GREP) -Po '^version\s+=\s+"\K.*?(?=")' $(CURDIR)/Cargo.toml)
 CARGO             := cargo
 
@@ -66,7 +67,7 @@ manpage: target/man/bunyan.1.gz ## Builds man page
 
 .PHONY: install-packaging-tools
 install-packaging-tools: ## Installs tools needed for building distributable packages
-	$Q cargo install cargo-deb
+	$Q cargo install --quiet cargo-deb cargo-generate-rpm
 
 target/debian/bunyan_view_%.deb: target/man/bunyan.1.gz
 	$Q if [ ! -f "$(CURDIR)/$(@)" ]; then \
@@ -76,3 +77,12 @@ target/debian/bunyan_view_%.deb: target/man/bunyan.1.gz
 
 .PHONY: debian-package
 debian-package: install-packaging-tools manpage target/debian/bunyan_view_$(VERSION)_$(DEB_ARCH).deb ## Creates a debian package for the current platform
+
+target/generate-rpm/bunyan_view_%.rpm: target/man/bunyan.1.gz
+	$Q if [ ! -f "$(CURDIR)/$(@)" ]; then \
+  		echo "$(M) building rpm package: $(@)"; \
+		cargo generate-rpm; \
+	fi
+
+.PHONY: rpm-package
+rpm-package: install-packaging-tools manpage target/generate-rpm/bunyan_view_$(VERSION)_$(RPM_ARCH).rpm ## Creates a rpm package for the current platform
