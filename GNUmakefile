@@ -14,6 +14,7 @@ DEB_ARCH          := $(shell uname -m | $(SED) -e 's/x86_64/amd64/g' -e 's/i686/
 RPM_ARCH          := $(shell uname -m)
 VERSION           ?= $(shell $(GREP) -Po '^version\s+=\s+"\K.*?(?=")' $(CURDIR)/Cargo.toml)
 CARGO             := cargo
+DOCKER            := docker
 
 BUILD_FLAGS       += --bin bunyan
 
@@ -55,6 +56,10 @@ debug: target/debug/bunyan ## Create debug build for current platform
 release: BUILD_FLAGS += --release
 release: target/release/bunyan ## Create release build for current platform
 
+.PHONE: test
+test: ## Run tests
+	$Q cargo test --features dumb_terminal
+
 target/man/bunyan.1.gz:
 	$(info $(M) processing manpage)
 	$Q mkdir -p target/man
@@ -64,6 +69,14 @@ target/man/bunyan.1.gz:
 
 .PHONY: manpage
 manpage: target/man/bunyan.1.gz ## Builds man page
+
+.PHONY: install-packaging-deb
+install-packaging-deb:
+	$Q cargo install --quiet cargo-deb
+
+.PHONY: install-packaging-rpm
+install-packaging-rpm:
+	$Q cargo install --quiet cargo-generate-rpm
 
 .PHONY: install-packaging-tools
 install-packaging-tools: ## Installs tools needed for building distributable packages
@@ -76,7 +89,7 @@ target/debian/bunyan_view_%.deb: target/man/bunyan.1.gz
 	fi
 
 .PHONY: debian-package
-debian-package: install-packaging-tools manpage target/debian/bunyan_view_$(VERSION)_$(DEB_ARCH).deb ## Creates a debian package for the current platform
+debian-package: install-packaging-deb release manpage target/debian/bunyan_view_$(VERSION)_$(DEB_ARCH).deb ## Creates a debian package for the current platform
 
 target/generate-rpm/bunyan_view_%.rpm: target/man/bunyan.1.gz
 	$Q if [ ! -f "$(CURDIR)/$(@)" ]; then \
@@ -85,4 +98,30 @@ target/generate-rpm/bunyan_view_%.rpm: target/man/bunyan.1.gz
 	fi
 
 .PHONY: rpm-package
-rpm-package: install-packaging-tools manpage target/generate-rpm/bunyan_view_$(VERSION)_$(RPM_ARCH).rpm ## Creates a rpm package for the current platform
+rpm-package: install-packaging-rpm clean release manpage target/generate-rpm/bunyan_view_$(VERSION)_$(RPM_ARCH).rpm ## Creates a rpm package for the current platform
+
+.PHONY: container-debian-build-image
+container-debian-build-image: ## Builds a container image for building on Debian Linux
+	$Q if [ "$$($(DOCKER) images --quiet --filter=reference=bunyan_view_debian_builder)" = "" ]; then \
+  		echo "$(M) building debian linux docker build image: $(@)"; \
+  		$(DOCKER) build -t bunyan_view_debian_builder -f Containerfile.debian .; \
+  	fi
+
+.PHONY: container-debian-package
+container-debian-package: container-debian-build-image ## Builds a rpm package using a the Debian Linux container image
+	$Q $(DOCKER) run --rm --tty --interactive --volume "$(CURDIR):/project" --workdir /project bunyan_view_debian_builder make debian-package
+
+.PHONY: container-rocky-build-image
+container-rocky-build-image: ## Builds a container image for building on Rocky Linux
+	$Q if [ "$$($(DOCKER) images --quiet --filter=reference=bunyan_view_rocky_builder)" = "" ]; then \
+  		echo "$(M) building rocky linux docker build image: $(@)"; \
+  		$(DOCKER) build -t bunyan_view_rocky_builder -f Containerfile.rocky .; \
+  	fi
+
+.PHONY: container-rpm-package
+container-rpm-package: container-rocky-build-image ## Builds a rpm package using a the Rocky Linux container image
+	$Q $(DOCKER) run --rm --tty --interactive --volume "$(CURDIR):/project" --workdir /project bunyan_view_rocky_builder make rpm-package
+
+.PHONY: container-test
+container-test: container-debian-build-image ## Run tests inside container
+	$Q $(DOCKER) run --rm --tty --interactive --volume "$(CURDIR):/project" --workdir /project bunyan_view_rocky_builder make test

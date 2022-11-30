@@ -1,0 +1,11 @@
+FROM rockylinux:9
+
+RUN dnf install --quiet --assumeyes \
+    make \
+    rust \
+    cargo \
+    gzip \
+    grep \
+    sed \
+    gawk && \
+    mkdir /project
