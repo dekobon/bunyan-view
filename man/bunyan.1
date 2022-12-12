@@ -71,6 +71,24 @@ Specify an output mode/format. One of the following:
 \fBshort\fR: like "long", but more concise
 .br
 \fBsimple\fR: level, followed by "-" and then the message
+.RE
+.TP
+\fB\-c, \-\-condition <condition>\fR
+Run each log message through the condition and only show those that return truish.
+.RS 12
+E.g.:
+.br
+ -c 'this.pid == 123'
+.br
+ -c 'this.level == DEBUG'
+.br
+ -c 'this.msg.indexOf("boom") != -1'
+.br
+"CONDITION" must be (somewhat) legal JS code.
+.br
+`this` holds the log record.
+.br
+The TRACE, DEBUG, ... FATAL values are defined to help with comparing `this.level`.
 
 .SH "EXIT STATUS"
 If there were no problems during execution, bunyan will exit
