@@ -37,6 +37,6 @@ jobs:
           archive: $bin-$tag-$target
           tar: unix
           zip: windows
-        include: LICENSE.txt,README.md,man/bunyan.1
+          include: LICENSE.txt,README.md,man/bunyan.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
