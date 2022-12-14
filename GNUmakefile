@@ -56,7 +56,7 @@ debug: target/debug/bunyan ## Create debug build for current platform
 release: BUILD_FLAGS += --release
 release: target/release/bunyan ## Create release build for current platform
 
-.PHONE: test
+.PHONY: test
 test: ## Run tests
 	$Q cargo test --features dumb_terminal
 
