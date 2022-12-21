@@ -13,6 +13,7 @@ VERSION           ?= $(shell $(GREP) -Po '^version\s+=\s+"\K.*?(?=")' $(CURDIR)/
 DEFAULT_TARGET    ?= $(shell $(RUSTUP) toolchain list | $(GREP) '(default)' | cut -d' ' -f1 | cut -d- -f2-)
 SHELL             := /bin/bash
 OUTPUT_BINARY     ?= bunyan
+PACKAGE_NAME      ?= bunyan-view
 CARGO             ?= cargo
 DOCKER            ?= docker
 CHECKSUM          ?= sha256sum
@@ -91,19 +92,19 @@ target/release/$(OUTPUT_BINARY):
 test: ## Run tests
 	$Q $(CARGO) test --features dumb_terminal
 
-.ONESHELL: target/man/bunyan.1.gz
-target/man/bunyan.1.gz:
+.ONESHELL: target/man/$(OUTPUT_BINARY).1.gz
+target/man/$(OUTPUT_BINARY).1.gz:
 	$Q $(info $(M) building distributable manpage)
 	mkdir -p target/man
-	cp man/bunyan.1 target/man/bunyan.1
-	$(SED) -i 's/%%VERSION%%/$(VERSION)/' target/man/bunyan.1
-	gzip target/man/bunyan.1
+	cp man/$(OUTPUT_BINARY).1 target/man/$(OUTPUT_BINARY).1
+	$(SED) -i 's/%%VERSION%%/$(VERSION)/' target/man/$(OUTPUT_BINARY).1
+	gzip target/man/$(OUTPUT_BINARY).1
 
 target/gz:
 	$Q mkdir -p target/gz
 
 .PHONY: manpage
-manpage: target/man/bunyan.1.gz ## Builds man page
+manpage: target/man/$(OUTPUT_BINARY).1.gz ## Builds man page
 
 include $(CURDIR)/build/package.mk
 include $(CURDIR)/build/container.mk
