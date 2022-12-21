@@ -20,7 +20,7 @@ target/dist:
 .PHONY: all-packages
 all-packages: deb-packages rpm-packages gz-packages ## Builds all packages for all targets
 
-target/dist/SHA256SUMS:
+target/dist/SHA256SUMS: target/dist
 	$Q cd target/dist && $(CHECKSUM) * > SHA256SUMS
 
 .PHONY: checksums
@@ -37,13 +37,13 @@ DEBIAN_PACKAGE_TARGETS := $(foreach t, $(TARGETS), target/$(t)/debian/bunyan-vie
 $(DEBIAN_PACKAGE_TARGETS): $(TARGETS) target/man/bunyan.1.gz target/dist
 	$Q TARGET="$(word 2, $(subst /,  , $(dir $@)))"
 	# Skip building debs for musl targets
-	if echo "$(@)" | grep -q 'musl'; then \
+	if echo "$(@)" | grep -q 'musl\|apple'; then \
 		exit 0
 	fi
 	if [ ! -f "$(CURDIR)/$(@)" ]; then
 		echo "$(M) building debian package for target [$${TARGET}]: $(@)"
 		$(CARGO) deb --no-build --target "$${TARGET}" --output "$(CURDIR)/$(@)"
-		ln -f -t "$(CURDIR)/target/dist/" "$(CURDIR)/$(@)"
+		ln -f "$(CURDIR)/$(@)" "$(CURDIR)/target/dist/"
 	fi
 
 .PHONY: deb-packages
@@ -56,11 +56,12 @@ deb-packages: install-packaging-deb $(TARGETS) manpage $(DEBIAN_PACKAGE_TARGETS)
 RPM_PACKAGE_TARGETS := $(foreach t, $(TARGETS), target/$(t)/generate-rpm/bunyan-view_$(VERSION)_$(firstword $(subst -,  , $(t))).rpm)
 
 .ONESHELL: $(RPM_PACKAGE_TARGETS)
+.NOTPARALLEL: $(RPM_PACKAGE_TARGETS)
 $(RPM_PACKAGE_TARGETS): $(TARGETS) target/man/bunyan.1.gz target/dist
 	$Q TARGET="$(word 2, $(subst /,  , $(dir $@)))"
 	ARCH="$(firstword $(subst -,  , $(word 2, $(subst /,  , $(dir $@)))))"
 	# Skip building rpms for musl targets
-	if echo "$(@)" | grep -q 'musl'; then \
+	if echo "$(@)" | grep -q 'musl\|apple'; then \
   		exit 0
 	fi
 	if [ ! -f "$(CURDIR)/$(@)" ]; then
@@ -73,7 +74,7 @@ $(RPM_PACKAGE_TARGETS): $(TARGETS) target/man/bunyan.1.gz target/dist
 		echo "$(M) building rpm package: $(@)"
 		$(CARGO) generate-rpm --arch "$${ARCH}" --target "$${TARGET}" --output "$(CURDIR)/$(@)"
 		rm -rf "$(CURDIR)/target/release"
-		ln -f -t "$(CURDIR)/target/dist/" "$(CURDIR)/$(@)"
+		ln -f "$(CURDIR)/$(@)" "$(CURDIR)/target/dist/"
 	fi
 
 .PHONY: rpm-packages
@@ -110,7 +111,7 @@ $(GZ_PACKAGE_TARGETS): $(TARGETS) target/man/bunyan.1.gz target/dist
 			-C $(CURDIR)/target/man bunyan.1.gz \
 			-C $(CURDIR)/target/$${TARGET}/release bunyan \
 			-C $(CURDIR) LICENSE.txt
-		ln -f -t "$(CURDIR)/target/dist/" "$${PACKAGE}"
+		ln -f "$${PACKAGE}" "$(CURDIR)/target/dist/"
 	fi
 
 .PHONE: gz-packages
