@@ -70,5 +70,4 @@ priority = "optional"
 assets = [
     { source = "target/release/bunyan", dest = "/usr/bin/bunyan", mode = "755" },
     { source = "target/man/bunyan.1.gz", dest = "/usr/share/man/man1/bunyan.1.gz", mode = "644" },
-    { source = "<path_relative_to_project_root>/*/apps/XXX.png", dest = "/usr/share/icons/hicolor/", mode = "644" },
 ]

@@ -4,19 +4,34 @@ ifneq ($(shell test $(MAKE_MAJOR_VER) -gt 3; echo $$?),0)
 $(error Make version $(MAKE_VERSION) is not supported, please install GNU Make 4.x)
 endif
 
-COMMITSAR_DOCKER  := docker run --tty --rm --workdir /src -v "$(CURDIR):/src" aevea/commitsar
-COMMITSAR		  ?= $(shell command -v commitsar 2> /dev/null)
-
 GREP              ?= $(shell command -v ggrep 2> /dev/null || command -v grep 2> /dev/null)
 SED               ?= $(shell command -v gsed 2> /dev/null || command -v sed 2> /dev/null)
 AWK               ?= $(shell command -v gawk 2> /dev/null || command -v awk 2> /dev/null)
-DEB_ARCH          := $(shell uname -m | $(SED) -e 's/x86_64/amd64/g' -e 's/i686/i386/g')
+RUSTUP            ?= $(shell command -v rustup 2> /dev/null)
 RPM_ARCH          := $(shell uname -m)
 VERSION           ?= $(shell $(GREP) -Po '^version\s+=\s+"\K.*?(?=")' $(CURDIR)/Cargo.toml)
-CARGO             := cargo
-DOCKER            := docker
+DEFAULT_TARGET    ?= $(shell $(RUSTUP) toolchain list | $(GREP) '(default)' | cut -d' ' -f1 | cut -d- -f2-)
+SHELL             := /bin/bash
+OUTPUT_BINARY     ?= bunyan
+CARGO             ?= cargo
+DOCKER            ?= docker
+CHECKSUM          ?= sha256sum
+COMMITSAR_DOCKER  := $(DOCKER) run --tty --rm --workdir /src -v "$(CURDIR):/src" aevea/commitsar
+COMMITSAR		  ?= $(shell command -v commitsar 2> /dev/null)
 
-BUILD_FLAGS       += --bin bunyan
+# Define platform targets based off of the current host OS
+# If we are running MacOS, then we can build for MacOS platform targets that have been installed in rustup
+# If we are running Linux, then we can build for Linux platform targets that have been installed in rustup
+UNAME = $(shell uname | tr '[:upper:]' '[:lower:]')
+ifeq ($(UNAME),darwin)
+	TARGETS       := $(sort $(shell $(RUSTUP) target list | $(GREP) '(installed)' | $(GREP) 'apple' | cut -d' ' -f1))
+else ifeq ($(UNAME),linux)
+	TARGETS       := $(sort $(shell $(RUSTUP) target list | $(GREP) '(installed)' | $(GREP) 'linux' | cut -d' ' -f1))
+else
+	TARGETS       := $(DEFAULT_TARGET)
+endif
+
+RELEASE_BUILD_FLAGS ?= --quiet --release --bin $(OUTPUT_BINARY)
 
 Q = $(if $(filter 1,$V),,@)
 M = $(shell printf "\033[34;1m▶\033[0m")
@@ -40,88 +55,55 @@ commitsar: ## Run git commit linter
 	$Q $(info $(M) running commitsar...)
 	$(COMMITSAR)
 
-.PHONY: all
-all: target/debug/bunyan
+.PHONY: list-targets
+list-targets: ## List all available platform targets
+	$Q echo $(TARGETS) | $(SED) -e 's/ /\n/g'
 
-target/%/bunyan:
-	$Q if [ ! -f "$(CURDIR)/$(@)" ]; then \
-  		echo "$(M) building $(@) with flags [$(BUILD_FLAGS)]"; \
-		$(CARGO) build $(BUILD_FLAGS); \
+.PHONY: all
+all: $(TARGETS) ## Build all available platform targets [see: list-targets]
+
+.PHONY: $(TARGETS)
+.ONESHELL: $(TARGETS)
+$(TARGETS): ## Build for a specific target
+	$Q if [ ! -f "$(CURDIR)/target/$(@)/release/$(OUTPUT_BINARY)" ]; then
+		echo "$(M) building $(OUTPUT_BINARY) with flags [$(RELEASE_BUILD_FLAGS) --target $(@)]"
+		$(CARGO) build $(RELEASE_BUILD_FLAGS) --target $@
 	fi
 
+target:
+	$Q mkdir -p $@
+
 .PHONY: debug
-debug: target/debug/bunyan ## Create debug build for current platform
+debug: target/debug/$(OUTPUT_BINARY) ## Build current platform target in debug mode
+
+target/debug/$(OUTPUT_BINARY):
+	$Q echo "$(M) building $(OUTPUT_BINARY) in debug mode for the current platform"
+	$Q $(CARGO) build --bin $(OUTPUT_BINARY)
 
 .PHONY: release
-release: BUILD_FLAGS += --release
-release: target/release/bunyan ## Create release build for current platform
+release: target/release/$(OUTPUT_BINARY) ## Build current platform target in release mode
+
+target/release/$(OUTPUT_BINARY):
+	$Q echo "$(M) building $(OUTPUT_BINARY) in release mode for the current platform"
+	$Q $(CARGO) build $(RELEASE_BUILD_FLAGS)
 
 .PHONY: test
 test: ## Run tests
-	$Q cargo test --features dumb_terminal
+	$Q $(CARGO) test --features dumb_terminal
 
+.ONESHELL: target/man/bunyan.1.gz
 target/man/bunyan.1.gz:
-	$(info $(M) processing manpage)
-	$Q mkdir -p target/man
-	$Q cp man/bunyan.1 target/man/bunyan.1
-	$Q $(SED) -i 's/%%VERSION%%/$(VERSION)/' target/man/bunyan.1
-	$Q gzip target/man/bunyan.1
+	$Q $(info $(M) building distributable manpage)
+	mkdir -p target/man
+	cp man/bunyan.1 target/man/bunyan.1
+	$(SED) -i 's/%%VERSION%%/$(VERSION)/' target/man/bunyan.1
+	gzip target/man/bunyan.1
+
+target/gz:
+	$Q mkdir -p target/gz
 
 .PHONY: manpage
 manpage: target/man/bunyan.1.gz ## Builds man page
 
-.PHONY: install-packaging-deb
-install-packaging-deb:
-	$Q cargo install --quiet cargo-deb
-
-.PHONY: install-packaging-rpm
-install-packaging-rpm:
-	$Q cargo install --quiet cargo-generate-rpm
-
-.PHONY: install-packaging-tools
-install-packaging-tools: ## Installs tools needed for building distributable packages
-	$Q cargo install --quiet cargo-deb cargo-generate-rpm
-
-target/debian/bunyan_view_%.deb: target/man/bunyan.1.gz
-	$Q if [ ! -f "$(CURDIR)/$(@)" ]; then \
-  		echo "$(M) building debian package: $(@)"; \
-		cargo deb; \
-	fi
-
-.PHONY: debian-package
-debian-package: install-packaging-deb release manpage target/debian/bunyan_view_$(VERSION)_$(DEB_ARCH).deb ## Creates a debian package for the current platform
-
-target/generate-rpm/bunyan_view_%.rpm: target/man/bunyan.1.gz
-	$Q if [ ! -f "$(CURDIR)/$(@)" ]; then \
-  		echo "$(M) building rpm package: $(@)"; \
-		cargo generate-rpm; \
-	fi
-
-.PHONY: rpm-package
-rpm-package: install-packaging-rpm clean release manpage target/generate-rpm/bunyan_view_$(VERSION)_$(RPM_ARCH).rpm ## Creates a rpm package for the current platform
-
-.PHONY: container-debian-build-image
-container-debian-build-image: ## Builds a container image for building on Debian Linux
-	$Q if [ "$$($(DOCKER) images --quiet --filter=reference=bunyan_view_debian_builder)" = "" ]; then \
-  		echo "$(M) building debian linux docker build image: $(@)"; \
-  		$(DOCKER) build -t bunyan_view_debian_builder -f Containerfile.debian .; \
-  	fi
-
-.PHONY: container-debian-package
-container-debian-package: container-debian-build-image ## Builds a rpm package using a the Debian Linux container image
-	$Q $(DOCKER) run --rm --tty --interactive --volume "$(CURDIR):/project" --workdir /project bunyan_view_debian_builder make debian-package
-
-.PHONY: container-rocky-build-image
-container-rocky-build-image: ## Builds a container image for building on Rocky Linux
-	$Q if [ "$$($(DOCKER) images --quiet --filter=reference=bunyan_view_rocky_builder)" = "" ]; then \
-  		echo "$(M) building rocky linux docker build image: $(@)"; \
-  		$(DOCKER) build -t bunyan_view_rocky_builder -f Containerfile.rocky .; \
-  	fi
-
-.PHONY: container-rpm-package
-container-rpm-package: container-rocky-build-image ## Builds a rpm package using a the Rocky Linux container image
-	$Q $(DOCKER) run --rm --tty --interactive --volume "$(CURDIR):/project" --workdir /project bunyan_view_rocky_builder make rpm-package
-
-.PHONY: container-test
-container-test: container-debian-build-image ## Run tests inside container
-	$Q $(DOCKER) run --rm --tty --interactive --volume "$(CURDIR):/project" --workdir /project bunyan_view_rocky_builder make test
+include $(CURDIR)/build/package.mk
+include $(CURDIR)/build/container.mk
