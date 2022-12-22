@@ -108,3 +108,4 @@ manpage: target/man/$(OUTPUT_BINARY).1.gz ## Builds man page
 
 include $(CURDIR)/build/package.mk
 include $(CURDIR)/build/container.mk
+include $(CURDIR)/build/release.mk

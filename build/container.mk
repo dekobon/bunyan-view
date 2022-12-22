@@ -32,3 +32,7 @@ container-all-packages: container-debian-build-image ## Builds all packages usin
 .PHONY: container-test
 container-test: container-debian-build-image ## Run tests inside container
 	$Q $(DOCKER) run --rm --tty --interactive --volume "$(CURDIR):/project" --workdir /project debian_builder make test
+	# Reset permissions on the target directory to the current user
+	if command -v id > /dev/null; then \
+		$(DOCKER) run --rm --tty --interactive --volume "$(CURDIR):/project" --workdir /project debian_builder chown --recursive "$(shell id -u):$(shell id -g)" /project/target
+	fi
