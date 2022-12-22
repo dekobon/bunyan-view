@@ -5,20 +5,12 @@ on:
       - v[0-9]+.[0-9]+.[0-9]+-experimental
 
 jobs:
-  create-release:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: taiki-e/create-gh-release-action@v1
-        with:
-          branch: master
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   build-linux-packages:
     runs-on: ubuntu-latest
     steps:
-      - name: container-all-packages
+      - name: checkout
         uses: actions/checkout@v2
+      - name: container-all-packages
         run: make container-all-packages
       - name: Upload linux packages
         uses: actions/upload-artifact@v3
@@ -29,7 +21,7 @@ jobs:
   build-macos-packages:
     runs-on: macos-latest
     steps:
-      - name: Checkout
+      - name: checkout
         uses: actions/checkout@v2
       - name: Install latest rust toolchain
         uses: actions-rs/toolchain@v1
@@ -51,7 +43,7 @@ jobs:
       - build-macos-packages
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: checkout
         uses: actions/checkout@v2
       - name: Download Linux packages
         uses: actions/download-artifact@v3
