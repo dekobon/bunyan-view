@@ -29,6 +29,8 @@ jobs:
           toolchain: stable
           default: true
           override: true
+      - name: install x86_64-apple-darwin and aarch64-apple-darwin targets
+        run: rustup target install x86_64-apple-darwin aarch64-apple-darwin
       - name: install latest gnu make version
         run: brew install make
       - name: macos-packages
@@ -39,7 +41,7 @@ jobs:
           name: macos-packages
           retention-days: 1
           path: target/dist/
-  build-supplemental-files:
+  build-supplemental-files-and-release:
     needs:
       - build-linux-packages
       - build-macos-packages
@@ -59,6 +61,8 @@ jobs:
           path: target/dist/
       - name: checksum
         run: make checksums
+      - name: output checksums
+        run: cat target/dist/SHA256SUMS
       - name: release-notes
         run: make release-notes
       - name: homebrew-package
