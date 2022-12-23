@@ -16,7 +16,7 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
-      - uses: actions-rs/cargo@v2
+      - uses: actions-rs/cargo@v1
         with:
           command: test
           args: --verbose --features dumb_terminal
@@ -31,7 +31,7 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
-      - uses: actions-rs/cargo@v2
+      - uses: actions-rs/cargo@v1
         with:
           command: test
           args: --verbose --features dumb_terminal
