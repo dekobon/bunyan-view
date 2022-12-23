@@ -23,14 +23,16 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v2
-      - name: Install latest rust toolchain
+      - name: install latest rust toolchain
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           default: true
           override: true
+      - name: install latest gnu make version
+        run: brew install make
       - name: macos-packages
-        run: gmake all-packages
+        run: gmake gz-packages
       - name: upload MacOS packages
         uses: actions/upload-artifact@v3
         with:
