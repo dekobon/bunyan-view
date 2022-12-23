@@ -12,7 +12,7 @@ jobs:
         uses: actions/checkout@v2
       - name: container-all-packages
         run: make container-all-packages
-      - name: Upload linux packages
+      - name: upload linux packages
         uses: actions/upload-artifact@v3
         with:
           name: linux-packages
@@ -30,8 +30,8 @@ jobs:
           default: true
           override: true
       - name: macos-packages
-        run: make all-packages
-      - name: Upload MacOS packages
+        run: gmake all-packages
+      - name: upload MacOS packages
         uses: actions/upload-artifact@v3
         with:
           name: macos-packages
@@ -45,12 +45,12 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v2
-      - name: Download Linux packages
+      - name: download linux packages
         uses: actions/download-artifact@v3
         with:
           name: linux-packages
           path: target/dist/
-      - name: Download MacOS packages
+      - name: download macos packages
         uses: actions/download-artifact@v3
         with:
           name: macos-packages
