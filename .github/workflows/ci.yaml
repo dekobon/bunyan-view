@@ -6,8 +6,8 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  test:
-    name: Test
+  test-linux:
+    name: Test (Linux)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -16,7 +16,22 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
-      - uses: actions-rs/cargo@v1
+      - uses: actions-rs/cargo@v2
+        with:
+          command: test
+          args: --verbose --features dumb_terminal
+
+  test-macos:
+    name: Test (MacOS)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - uses: actions-rs/cargo@v2
         with:
           command: test
           args: --verbose --features dumb_terminal
