@@ -62,4 +62,4 @@ jobs:
       - name: release-notes
         run: make release-notes
       - name: homebrew-package
-        run: make homebrew-package
+        run: make homebrew-packages
