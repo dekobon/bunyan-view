@@ -10,6 +10,7 @@ AWK               ?= $(shell command -v gawk 2> /dev/null || command -v awk 2> /
 RUSTUP            ?= $(shell command -v rustup 2> /dev/null)
 RPM_ARCH          := $(shell uname -m)
 VERSION           ?= $(shell $(GREP) -Po '^version\s+=\s+"\K.*?(?=")' $(CURDIR)/Cargo.toml)
+SRC_REPO          := https://github.com/dekobon/bunyan-view
 DEFAULT_TARGET    ?= $(shell $(RUSTUP) toolchain list | $(GREP) '(default)' | cut -d' ' -f1 | cut -d- -f2-)
 SHELL             := /bin/bash
 OUTPUT_BINARY     ?= bunyan

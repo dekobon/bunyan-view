@@ -86,8 +86,14 @@ rpm-packages: install-packaging-rpm $(TARGETS) manpage $(RPM_PACKAGE_TARGETS) ##
 
 .PHONY: homebrew-packages
 .ONESHELL: homebrew-packages
-homebrew-packages: target/dist/SHA256SUMS
-	$Q VERSION="$(VERSION)" \
+homebrew-packages: target/dist/SHA256SUMS ## Modifies the homebrew formula to point to the latest release
+ifdef NEW_VERSION
+	VERSION=$(NEW_VERSION)
+endif
+	$Q \
+	VERSION="$(VERSION)" \
+    PACKAGE_NAME="$(PACKAGE_NAME)" \
+    SRC_REPO="$(SRC_REPO)" \
 	AARCH64_UNKNOWN_LINUX_GNU_SHA256="$$($(GREP) $(PACKAGE_NAME)_v$(VERSION)_aarch64-unknown-linux-gnu.tar.gz $(CURDIR)/target/dist/SHA256SUMS | cut -d ' ' -f 1)" \
 	X86_64_UNKNOWN_LINUX_GNU_SHA256="$$($(GREP) $(PACKAGE_NAME)_v$(VERSION)_x86_64-unknown-linux-gnu.tar.gz $(CURDIR)/target/dist/SHA256SUMS | cut -d ' ' -f 1)" \
 	X86_64_APPLE_DARWIN_SHA256="$$($(GREP) $(PACKAGE_NAME)_v$(VERSION)_x86_64-apple-darwin.tar.gz $(CURDIR)/target/dist/SHA256SUMS | cut -d ' ' -f 1)" \

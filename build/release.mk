@@ -1,4 +1,4 @@
-LAST_VERSION       = $(shell git tag -l | $(GREP) -E '^v[0-9]+\.[0-9]+\.[0-9]+$$' | sort --version-sort --field-separator=. --reverse | head -n1)
+LAST_VERSION       = $(shell git tag -l | $(GREP) -E '^v[0-9]+\.[0-9]+\.[0-9]+$$' | sort --version-sort --field-separator=. --reverse | head -n1 | $(SED) -e 's/^v//')
 LAST_VERSION_HASH  = $(shell git show --format=%H $(LAST_VERSION) | head -n1)
 CHANGES            = $(shell git log --format="%s	(%h)" "$(LAST_VERSION_HASH)..HEAD" | \
 					 	$(GREP) -v '^(ci|chore): .*' | \
@@ -27,3 +27,18 @@ target/dist/release_notes.md: target/dist target/dist/SHA256SUMS
 
 .PHONY: release-notes
 release-notes: target/dist/release_notes.md ## Build release notes
+
+.PHONY: version
+version: ## Outputs the current version
+	$Q echo "Version: $(VERSION)"
+
+.PHONY: version-update
+.ONESHELL: version-update
+version-update: ## Prompts for a new version
+	$(info $(M) updating repository to new version) @
+	$Q echo "  last committed version: $(LAST_VERSION)"
+	$Q echo "  Cargo.toml file version : $(VERSION)"
+	read -p "  Enter new version in the format (MAJOR.MINOR.PATCH): " version
+	$Q echo "$$version" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$$' || \
+		(echo "invalid version identifier: $$version" && exit 1) && \
+	$(SED) -i "s/^version\s*=.*$$/version = \"$$version\"/" $(CURDIR)/Cargo.toml
