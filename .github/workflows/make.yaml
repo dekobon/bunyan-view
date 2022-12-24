@@ -1,8 +1,8 @@
 name: Build and Publish Binaries
 on:
   push:
-    tags:
-      - v[0-9]+.[0-9]+.[0-9]+-experimental
+    branches:
+      - release-v[0-9]+.[0-9]+.[0-9]+
 
 jobs:
   build-linux-packages:
@@ -67,3 +67,11 @@ jobs:
         run: make release-notes
       - name: homebrew-package
         run: make homebrew-packages
+      - name: assign git user
+        run: |
+          git config user.name 'Github Action'
+          git config user.email 'dekobon@users.noreply.github.com'
+      - name: do release
+        run: make gh-make-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
