@@ -4,22 +4,23 @@ ifneq ($(shell test $(MAKE_MAJOR_VER) -gt 3; echo $$?),0)
 $(error Make version $(MAKE_VERSION) is not supported, please install GNU Make 4.x)
 endif
 
-GREP              ?= $(shell command -v ggrep 2> /dev/null || command -v grep 2> /dev/null)
-SED               ?= $(shell command -v gsed 2> /dev/null || command -v sed 2> /dev/null)
-AWK               ?= $(shell command -v gawk 2> /dev/null || command -v awk 2> /dev/null)
-RUSTUP            ?= $(shell command -v rustup 2> /dev/null)
-RPM_ARCH          := $(shell uname -m)
-VERSION           ?= $(shell $(GREP) -Po '^version\s+=\s+"\K.*?(?=")' $(CURDIR)/Cargo.toml)
-SRC_REPO          := https://github.com/dekobon/bunyan-view
-DEFAULT_TARGET    ?= $(shell $(RUSTUP) toolchain list | $(GREP) '(default)' | cut -d' ' -f1 | cut -d- -f2-)
-SHELL             := /bin/bash
-OUTPUT_BINARY     ?= bunyan
-PACKAGE_NAME      ?= bunyan-view
-CARGO             ?= cargo
-DOCKER            ?= docker
-CHECKSUM          ?= sha256sum
-COMMITSAR_DOCKER  := $(DOCKER) run --tty --rm --workdir /src -v "$(CURDIR):/src" aevea/commitsar
-COMMITSAR		  ?= $(shell command -v commitsar 2> /dev/null)
+GREP               ?= $(shell command -v ggrep 2> /dev/null || command -v grep 2> /dev/null)
+SED                ?= $(shell command -v gsed 2> /dev/null || command -v sed 2> /dev/null)
+AWK                ?= $(shell command -v gawk 2> /dev/null || command -v awk 2> /dev/null)
+RUSTUP             ?= $(shell command -v rustup 2> /dev/null)
+RPM_ARCH           := $(shell uname -m)
+VERSION            ?= $(shell $(GREP) -Po '^version\s+=\s+"\K.*?(?=")' $(CURDIR)/Cargo.toml)
+SRC_REPO           := https://github.com/dekobon/bunyan-view
+DEFAULT_TARGET     ?= $(shell $(RUSTUP) toolchain list | $(GREP) '(default)' | cut -d' ' -f1 | cut -d- -f2-)
+SHELL              := /bin/bash
+OUTPUT_BINARY      ?= bunyan
+PACKAGE_NAME       ?= bunyan-view
+CARGO              ?= cargo
+DOCKER             ?= docker
+DOCKER_BUILD_FLAGS ?= --load
+CHECKSUM           ?= sha256sum
+COMMITSAR_DOCKER   := $(DOCKER) run --tty --rm --workdir /src -v "$(CURDIR):/src" aevea/commitsar
+COMMITSAR		   ?= $(shell command -v commitsar 2> /dev/null)
 
 # Define platform targets based off of the current host OS
 # If we are running MacOS, then we can build for MacOS platform targets that have been installed in rustup

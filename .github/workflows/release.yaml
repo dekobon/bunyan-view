@@ -9,7 +9,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
+      - name: setup docker buildx
+        uses: docker/setup-buildx-action@v2
+      - name: create build container
+        run: make container-debian-build-image
+        env:
+          DOCKER_BUILD_FLAGS: --load --cache-from=type=gha --cache-to=type=gha,mode=max
+      - name: run tests
+        run: make container-test
       - name: container-all-packages
         run: make container-all-packages
       - name: upload linux packages
@@ -22,7 +30,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: install latest rust toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -33,6 +41,8 @@ jobs:
         run: rustup target install x86_64-apple-darwin aarch64-apple-darwin
       - name: install latest gnu make version
         run: brew install make
+      - name: run tests
+        run: gmake test
       - name: macos-packages
         run: gmake gz-packages
       - name: upload MacOS packages
@@ -42,13 +52,14 @@ jobs:
           retention-days: 1
           path: target/dist/
   build-supplemental-files-and-release:
+    environment: release
     needs:
       - build-linux-packages
       - build-macos-packages
     runs-on: ubuntu-latest
     steps:
       - name: checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: download linux packages
         uses: actions/download-artifact@v3
         with:
@@ -64,14 +75,35 @@ jobs:
       - name: output checksums
         run: cat target/dist/SHA256SUMS
       - name: release-notes
-        run: make release-notes
+        run: |
+             git fetch --tags
+             git fetch --unshallow || true
+             make release-notes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: append to changelog
+        run: make changelog >> CHANGELOG.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: homebrew-package
         run: make homebrew-packages
-      - name: assign git user
+      - name: assign git user and commit release changes
         run: |
           git config user.name 'Github Action'
           git config user.email 'dekobon@users.noreply.github.com'
-      - name: do release
+          git commit CHANGELOG.md pkg/brew/*.rb -m "ci: release changes for ${GITHUB_REF_NAME}"
+          git push origin ${GITHUB_REF_NAME}
+      - name: do github release
         run: make gh-make-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: do cargo release
+        # Do not fail build on crates.io problems
+        run: make cargo-release || true
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+      - name: create pull request integrating release branch changes
+        run: |
+          gh pr create --title "ci: integrate release changes for ${GITHUB_REF_NAME}" --body "This pull request was automatically created by the Github Action workflow **${GITHUB_WORKFLOW}**." --head ${GITHUB_REF_NAME} --base master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
