@@ -37,7 +37,7 @@ DEBIAN_PACKAGE_TARGETS := $(foreach t, $(TARGETS), target/$(t)/debian/$(PACKAGE_
 $(DEBIAN_PACKAGE_TARGETS): $(TARGETS) target/man/$(OUTPUT_BINARY).1.gz target/dist
 	$Q TARGET="$(word 2, $(subst /,  , $(dir $@)))"
 	# Skip building debs for musl targets
-	if echo "$(@)" | grep -q 'musl\|apple'; then \
+	if echo "$(@)" | $(GREP) -q 'musl\|apple'; then \
 		exit 0
 	fi
 	if [ ! -f "$(CURDIR)/$(@)" ]; then
@@ -61,7 +61,7 @@ $(RPM_PACKAGE_TARGETS): $(TARGETS) target/man/$(OUTPUT_BINARY).1.gz target/dist
 	$Q TARGET="$(word 2, $(subst /,  , $(dir $@)))"
 	ARCH="$(firstword $(subst -,  , $(word 2, $(subst /,  , $(dir $@)))))"
 	# Skip building rpms for musl targets
-	if echo "$(@)" | grep -q 'musl\|apple'; then \
+	if echo "$(@)" | $(GREP) -q 'musl\|apple'; then \
   		exit 0
 	fi
 	if [ ! -f "$(CURDIR)/$(@)" ]; then
@@ -98,7 +98,7 @@ endif
 	X86_64_UNKNOWN_LINUX_GNU_SHA256="$$($(GREP) $(PACKAGE_NAME)_v$(VERSION)_x86_64-unknown-linux-gnu.tar.gz $(CURDIR)/target/dist/SHA256SUMS | cut -d ' ' -f 1)" \
 	X86_64_APPLE_DARWIN_SHA256="$$($(GREP) $(PACKAGE_NAME)_v$(VERSION)_x86_64-apple-darwin.tar.gz $(CURDIR)/target/dist/SHA256SUMS | cut -d ' ' -f 1)" \
     AARCH64_APPLE_DARWIN_SHA256="$$($(GREP) $(PACKAGE_NAME)_v$(VERSION)_aarch64-apple-darwin.tar.gz $(CURDIR)/target/dist/SHA256SUMS | cut -d ' ' -f 1)" \
-	envsubst < pkg/brew/bunyan-bin.rb.template > $(CURDIR)/pkg/brew/bunyan-bin.rb
+	envsubst < $(CURDIR)/pkg/brew/$(PACKAGE_NAME).rb.template > $(CURDIR)/pkg/brew/$(PACKAGE_NAME).rb
 
 
 ######################################################################################################################
