@@ -1,14 +1,13 @@
 .PHONY: gh-make-release
 .ONESHELL: gh-make-release
-gh-make-release: GIT_BRANCH = $(shell git rev-parse --abbrev-ref HEAD)
 gh-make-release:
 ifndef CI
 	$(error must be running in CI)
 endif
-ifneq ($(GIT_BRANCH),release-v$(VERSION))
+ifneq ($(shell git rev-parse --abbrev-ref HEAD),release-v$(VERSION))
 	$(error must be running on release-v$(VERSION) branch)
 endif
-	$(info $(M) updating files with release version) @
+	$(info $(M) updating files with release version [$(GIT_BRANCH)]) @
 	git commit -m "ci: update files to version $(VERSION)" Cargo.toml pkg/brew/bunyan-bin.rb
 	git push origin "release-v$(VERSION)"
 	git tag -a "v$(VERSION)" -m "ci: tagging v$(VERSION)"
