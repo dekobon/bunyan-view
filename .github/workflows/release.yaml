@@ -30,7 +30,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: install GNU tools
-        run: brew install gnu-sed grep gawk
+        run: brew install gnu-sed grep gawk make
       - name: checkout
         uses: actions/checkout@v3
       - name: install latest rust toolchain
@@ -41,8 +41,6 @@ jobs:
           override: true
       - name: install x86_64-apple-darwin and aarch64-apple-darwin targets
         run: rustup target install x86_64-apple-darwin aarch64-apple-darwin
-      - name: install latest gnu make version
-        run: brew install make
       - name: run tests
         run: gmake test
       - name: macos-packages
