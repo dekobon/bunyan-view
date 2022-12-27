@@ -29,7 +29,7 @@ else
   LAST_RELEASE="$(git tag -l | ${GREP} -E '^v[0-9]+\.[0-9]+\.[0-9]+$$' | sort --version-sort --field-separator=. --reverse | ${GREP} -v "${VERSION}" | head -n1)"
 fi
 
-LAST_RELEASE_HASH="$(git show --format=%H "${LAST_RELEASE}" | head -n1)"
+LAST_RELEASE_HASH="$(git show --format=%H "${LAST_RELEASE}" | head -n1 | ${SED} -e 's/^tag //')"
 
 echo "## Changes between ${LAST_RELEASE} [$LAST_RELEASE_HASH] and ${VERSION}:"
 git log --format="%s	(%h)" "${LAST_RELEASE_HASH}..HEAD" | \
