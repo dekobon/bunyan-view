@@ -99,8 +99,8 @@ target/man/$(OUTPUT_BINARY).1.gz:
 	$Q $(info $(M) building distributable manpage)
 	mkdir -p target/man
 	cp man/$(OUTPUT_BINARY).1 target/man/$(OUTPUT_BINARY).1
-	$(SED) -i 's/%%VERSION%%/$(VERSION)/' target/man/$(OUTPUT_BINARY).1
-	gzip target/man/$(OUTPUT_BINARY).1
+	$(SED) -i 's/%%VERSION%%/$(VERSION)/' $(CURDIR)/target/man/$(OUTPUT_BINARY).1
+	gzip $(CURDIR)/target/man/$(OUTPUT_BINARY).1
 
 target/gz:
 	$Q mkdir -p target/gz

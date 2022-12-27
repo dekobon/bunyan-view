@@ -29,6 +29,8 @@ jobs:
   build-macos-packages:
     runs-on: macos-latest
     steps:
+      - name: install GNU tools
+        run: brew install gnu-sed grep gawk
       - name: checkout
         uses: actions/checkout@v3
       - name: install latest rust toolchain
