@@ -1,20 +1,22 @@
 class BunyanView < Formula
   desc "A full-featured Rust port of the Node Bunyan structured log file viewer"
   homepage "https://github.com/dekobon/bunyan-view"
-  version "0.3.1"
+  version "0.3.2"
+  package_name = "bunyan-view"
+  src_repo = "https://github.com/dekobon/bunyan-view"
 
   if OS.mac? and Hardware::CPU.intel?
-      url "https://github.com/dekobon/bunyan-view/releases/download/v#{version}/bunyan-v#{version}_x86_64-apple-darwin.tar.gz"
-      sha256 "50dbdaf9543477960df1038ae0cee50cba3fdd5a05da8cfa3e1c5ddc02aa54d7"
+      url "#{src_repo}/releases/download/v#{version}/#{package_name}_v#{version}_x86_64-apple-darwin.tar.gz"
+      sha256 ""
   elsif OS.mac? and Hardware::CPU.arm?
-      url "https://github.com/dekobon/bunyan-view/releases/download/v#{version}/bunyan-v#{version}_aarch64-apple-darwin.tar.gz"
-      sha256 "d22e50fc01010219076ae559c2ed12dccde14c835044fcfcf4ba49004d6da87e"
+      url "#{src_repo}/releases/download/v#{version}/#{package_name}_#{version}_aarch64-apple-darwin.tar.gz"
+      sha256 ""
   elsif OS.linux? and Hardware::CPU.intel?
-      url "https://github.com/dekobon/bunyan-view/releases/download/v#{version}/bunyan-v#{version}_x86_64-unknown-linux-gnu.tar.gz"
-      sha256 "bc2bf834b3f42193e8930fb96654024909947529a03f81c8c07ef51c72988ab6"
+      url "#{src_repo}/releases/download/v#{version}/#{package_name}_#{version}_x86_64-unknown-linux-gnu.tar.gz"
+      sha256 "d888006130b18fd9fa84d23ea71bd373c924e823d6ac6f74ffdcb93a4592bd4d"
   elsif OS.linux? and Hardware::CPU.arm? and Hardware::CPU.is_64_bit?
-      url "https://github.com/dekobon/bunyan-view/releases/download/v#{version}/bunyan-v#{version}_aarch64-unknown-linux-gnu.tar.gz"
-      sha256 "f654d069bb7bc4c7d71104fccf9f94f22c124736964b33063d90b57eb868b779"
+      url "#{src_repo}/releases/download/v#{version}/#{package_name}_#{version}_aarch64-unknown-linux-gnu.tar.gz"
+      sha256 "8fa9a34497b2f1d3f042b8cf05110ff7b6b75129451d3edcc27d1dd8459356c7"
   else
       odie "Unsupported architecture"
   end
