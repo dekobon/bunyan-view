@@ -78,6 +78,7 @@ jobs:
         run: |
              git fetch --tags
              git fetch --unshallow || true
+             git pull origin ${GITHUB_REF_NAME}
              make release-notes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
