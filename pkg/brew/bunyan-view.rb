@@ -1,22 +1,22 @@
 class BunyanView < Formula
   desc "A full-featured Rust port of the Node Bunyan structured log file viewer"
   homepage "https://github.com/dekobon/bunyan-view"
-  version "0.3.2"
+  version "0.3.3"
   package_name = "bunyan-view"
   src_repo = "https://github.com/dekobon/bunyan-view"
 
   if OS.mac? and Hardware::CPU.intel?
       url "#{src_repo}/releases/download/v#{version}/#{package_name}_v#{version}_x86_64-apple-darwin.tar.gz"
-      sha256 ""
+      sha256 "a3287d12b293e1f62522e0a05e4bbb6bdac7fdb9160f81c0ecd80e82455c4670"
   elsif OS.mac? and Hardware::CPU.arm?
       url "#{src_repo}/releases/download/v#{version}/#{package_name}_#{version}_aarch64-apple-darwin.tar.gz"
-      sha256 ""
+      sha256 "2364ada5a4377a5a8833d30c3d16d73bce9f26cca3a4569d8e575e308f48dab2"
   elsif OS.linux? and Hardware::CPU.intel?
       url "#{src_repo}/releases/download/v#{version}/#{package_name}_#{version}_x86_64-unknown-linux-gnu.tar.gz"
-      sha256 "f763e8efb8205a50f0eac79bec5d4418915411ba813504b76c31c4d5f7f86b65"
+      sha256 "177463e0a7aefb1398a80415f086676555800ce96f100490d3afbf168a388b62"
   elsif OS.linux? and Hardware::CPU.arm? and Hardware::CPU.is_64_bit?
       url "#{src_repo}/releases/download/v#{version}/#{package_name}_#{version}_aarch64-unknown-linux-gnu.tar.gz"
-      sha256 "b44bec7ee25bd6f1385ef1737ae28c5c5c0acbc08fb9c85677725c7924221edd"
+      sha256 "e3ad7ce064f6e06e21779801b1d2aa28103822b34a131003396a7f127f7baf8e"
   else
       odie "Unsupported architecture"
   end
