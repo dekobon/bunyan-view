@@ -1,7 +1,7 @@
 [package]
 name = "bunyan_view"
 description = "A full-featured port of the Node Bunyan structured log file viewer"
-version = "0.3.3-beta"
+version = "0.3.3"
 authors = ["Elijah Zupancic <elijah@zupancic.name>"]
 license = "MPL-2.0"
 homepage = "https://github.com/dekobon/bunyan-view"
