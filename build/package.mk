@@ -108,14 +108,14 @@ endif
 GZ_PACKAGE_TARGETS = $(foreach t, $(TARGETS), target/gz/$(t)/$(PACKAGE_NAME)_$(VERSION)_$(firstword $(subst -,  , $(t))).tar.gz)
 
 .ONESHELL: $(GZ_PACKAGE_TARGETS)
-$(GZ_PACKAGE_TARGETS): $(TARGETS) target/man/bunyan.1.gz target/dist
+$(GZ_PACKAGE_TARGETS): $(TARGETS) target/man/$(OUTPUT_BINARY).1.gz target/dist
 	$Q mkdir -p "$(CURDIR)/target/gz"
 	TARGET="$(word 3, $(subst /,  , $(dir $@)))"
 	PACKAGE="$(CURDIR)/target/gz/$(PACKAGE_NAME)_v$(VERSION)_$${TARGET}.tar.gz"
 	if [ ! -f "$${PACKAGE}}" ]; then
 		tar -cz -f $${PACKAGE} \
-			-C $(CURDIR)/target/man bunyan.1.gz \
-			-C $(CURDIR)/target/$${TARGET}/release bunyan \
+			-C $(CURDIR)/target/man $(OUTPUT_BINARY).1.gz \
+			-C $(CURDIR)/target/$${TARGET}/release $(OUTPUT_BINARY) \
 			-C $(CURDIR) LICENSE.txt
 		ln -f "$${PACKAGE}" "$(CURDIR)/target/dist/"
 	fi
