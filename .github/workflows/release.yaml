@@ -60,6 +60,8 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
       - name: download linux packages
         uses: actions/download-artifact@v3
         with:
@@ -75,11 +77,7 @@ jobs:
       - name: output checksums
         run: cat target/dist/SHA256SUMS
       - name: release-notes
-        run: |
-             git fetch --tags
-             git fetch --unshallow || true
-             git pull origin ${GITHUB_REF_NAME}
-             make release-notes
+        run: make release-notes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: append to changelog
