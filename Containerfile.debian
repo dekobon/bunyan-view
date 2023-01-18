@@ -1,4 +1,4 @@
-FROM rust:slim-buster
+FROM rust:slim-bullseye
 
 RUN set -eux \
     export DEBIAN_FRONTEND=noninteractive; \
@@ -23,4 +23,5 @@ RUN set -eux \
         libc6-dev-amd64-cross; \
     rustup target install x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu x86_64-unknown-linux-musl; \
     cargo install --quiet cargo-deb cargo-generate-rpm; \
-    rm -rf /var/lib/apt/lists/* /var/tmp/* /tmp/*;
+    rm -rf /var/lib/apt/lists/* /var/tmp/* /tmp/*; \
+    git config --global --add safe.directory /project

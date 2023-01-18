@@ -36,3 +36,11 @@ container-test: container-debian-build-image ## Run tests inside container
 	if command -v id > /dev/null; then \
 		$(DOCKER) run --rm --volume "$(CURDIR):/project" --workdir /project debian_builder chown --recursive "$(shell id -u):$(shell id -g)" /project/target
 	fi
+
+.PHONY: container-shell
+container-shell: container-debian-build-image ## Run tests inside container
+	$Q $(DOCKER) run -it --rm --volume "$(CURDIR):/project" --workdir /project debian_builder bash
+	# Reset permissions on the target directory to the current user
+	if command -v id > /dev/null; then \
+		$(DOCKER) run --rm --volume "$(CURDIR):/project" --workdir /project debian_builder chown --recursive "$(shell id -u):$(shell id -g)" /project/target
+	fi

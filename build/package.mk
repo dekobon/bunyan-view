@@ -34,6 +34,7 @@ to_debian_arch = $(shell echo $(1) | $(SED) -e 's/x86_64/amd64/' -e 's/aarch64/a
 DEBIAN_PACKAGE_TARGETS := $(foreach t, $(TARGETS), target/$(t)/debian/$(PACKAGE_NAME)_$(VERSION)_$(call to_debian_arch, $(firstword $(subst -,  , $(t)))).deb)
 
 .ONESHELL: $(DEBIAN_PACKAGE_TARGETS)
+.NOTPARALLEL: $(DEBIAN_PACKAGE_TARGETS)
 $(DEBIAN_PACKAGE_TARGETS): $(TARGETS) target/man/$(OUTPUT_BINARY).1.gz target/dist
 	$Q TARGET="$(word 2, $(subst /,  , $(dir $@)))"
 	# Skip building debs for musl targets
@@ -41,6 +42,12 @@ $(DEBIAN_PACKAGE_TARGETS): $(TARGETS) target/man/$(OUTPUT_BINARY).1.gz target/di
 		exit 0
 	fi
 	if [ ! -f "$(CURDIR)/$(@)" ]; then
+		if [ -d "$(CURDIR)/target/release" ]; then \
+			echo "$(M) removing existing release directory: $(CURDIR)/target/release"
+			rm -rf "$(CURDIR)/target/release"
+		fi
+		echo "$(M) copying target architecture [$${TARGET}] build to target/release directory"
+		cp -r "$(CURDIR)/target/$${TARGET}/release" "$(CURDIR)/target/release"
 		echo "$(M) building debian package for target [$${TARGET}]: $(@)"
 		$(CARGO) deb --no-build --target "$${TARGET}" --output "$(CURDIR)/$(@)"
 		ln -f "$(CURDIR)/$(@)" "$(CURDIR)/target/dist/"
