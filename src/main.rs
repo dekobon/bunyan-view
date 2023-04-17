@@ -226,7 +226,10 @@ fn apply_color_settings(matches: &ArgMatches) {
     }
 
     // If BUNYAN_NO_COLOR is set, we intentionally ignore the --color setting
-    if matches.is_present("no-color") || ::std::env::var_os("BUNYAN_NO_COLOR").is_some() {
+    if matches.is_present("no-color")
+        || ::std::env::var_os("BUNYAN_NO_COLOR").is_some()
+        || ::std::env::var_os("NO_COLOR").is_some()
+    {
         colored::control::set_override(false);
     // Colorized output is the default
     } else {
