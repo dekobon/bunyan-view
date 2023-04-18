@@ -95,7 +95,7 @@ impl LogLevel {
                 match numeric_string.parse::<u16>() {
                     Ok(code) => Ok(LogLevel::OTHER(code)),
                     Err(_) => {
-                        eprintln!("Attempting to parse numeric string: {}", level);
+                        eprintln!("Attempting to parse numeric string: {level}");
                         Err(LogLevelParseError::from(level))
                     }
                 }
@@ -176,7 +176,7 @@ pub enum LogFormat {
 impl LogFormat {
     pub fn as_string(&self) -> Cow<'static, str> {
         match *self {
-            LogFormat::Json(indent) => format!("json-{}", indent).into(),
+            LogFormat::Json(indent) => format!("json-{indent}").into(),
             LogFormat::Inspect => "inspect".into(),
             LogFormat::Long => "long".into(),
             LogFormat::Short => "short".into(),

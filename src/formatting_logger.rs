@@ -113,8 +113,8 @@ fn write_all_extra_params<W: Write>(
             ::serde_json::to_string_pretty(value).unwrap_or_else(|_| "[malformed]".to_string());
 
         match caller_option {
-            Some(caller) => format!("{}.{}: {}", caller, key, pretty),
-            None => format!("{}: {}", key, pretty),
+            Some(caller) => format!("{caller}.{key}: {pretty}"),
+            None => format!("{key}: {pretty}"),
         }
     }
 
@@ -164,8 +164,8 @@ fn write_all_extra_params<W: Write>(
                 // Add long strings to details
                 if is_multiline_string(text) {
                     let detail = match caller_option {
-                        Some(caller) => format!("{}.{}: {}", caller, key, text),
-                        None => format!("{}: {}", key, text),
+                        Some(caller) => format!("{caller}.{key}: {text}"),
+                        None => format!("{key}: {text}"),
                     };
 
                     details.push(detail);
@@ -394,14 +394,12 @@ fn write_req<W: Write>(writer: &mut W, key: &str, other: &mut Map<String, Value>
                 w!(writer, "{} ", method_text.yellow());
             } else {
                 return Err(BunyanLogParseError::new(format!(
-                    "[{}.method] is not a JSON string",
-                    caller
+                    "[{caller}.method] is not a JSON string"
                 )));
             }
         } else {
             return Err(BunyanLogParseError::new(format!(
-                "[{}.method] is not present",
-                caller
+                "[{caller}.method] is not present"
             )));
         }
 
@@ -410,14 +408,12 @@ fn write_req<W: Write>(writer: &mut W, key: &str, other: &mut Map<String, Value>
                 w!(writer, "{} ", url_text.bright_blue());
             } else {
                 return Err(BunyanLogParseError::new(format!(
-                    "[{}.url] is not a JSON string",
-                    caller
+                    "[{caller}.url] is not a JSON string"
                 )));
             }
         } else {
             return Err(BunyanLogParseError::new(format!(
-                "[{}.url] is not present",
-                caller
+                "[{caller}.url] is not present"
             )));
         }
 
@@ -428,8 +424,7 @@ fn write_req<W: Write>(writer: &mut W, key: &str, other: &mut Map<String, Value>
                 Value::Null => w!(writer, "HTTP/{}", DEFAULT_HTTP_VERSION),
                 _ => {
                     return Err(BunyanLogParseError::new(format!(
-                        "[{}.httpVersion] is not a string or number",
-                        caller
+                        "[{caller}.httpVersion] is not a string or number",
                     )))
                 }
             };
@@ -527,8 +522,7 @@ fn json_string_or_number_as_u16(val: &Value) -> Result<u16, ParseIntFromJsonErro
             if let Some(code) = number.as_u64() {
                 if code > u64::from(u16::MAX) {
                     let err = BunyanLogParseError::new(format!(
-                        "Number is greater than u16 bounds: {}",
-                        code
+                        "Number is greater than u16 bounds: {code}"
                     ));
                     Err(ParseIntFromJsonError::Structural(err))
                 } else {
@@ -617,7 +611,7 @@ fn write_res<W: Write>(writer: &mut W, key: &str, other: &mut Map<String, Value>
 
         if let Some(code) = numeric_status_code {
             let http_version = option_http_version.unwrap_or(DEFAULT_HTTP_VERSION);
-            let http_status = format!("HTTP/{}", http_version);
+            let http_status = format!("HTTP/{http_version}");
 
             w!(
                 writer,
@@ -944,7 +938,7 @@ fn validate_log_data_structure(line: &BunyanLine) -> Option<BunyanLogParseError>
 
         if let Some(status_code) = res.get("statusCode") {
             if let Err(e) = json_string_or_number_as_u16(status_code) {
-                let msg = format!("Invalid status code on res: {}", e);
+                let msg = format!("Invalid status code on res: {e}");
                 return Some(BunyanLogParseError::new(msg));
             }
         }
@@ -976,7 +970,7 @@ fn validate_log_data_structure(line: &BunyanLine) -> Option<BunyanLogParseError>
 
         if let Some(status_code) = res.get("statusCode") {
             if let Err(e) = json_string_or_number_as_u16(status_code) {
-                let msg = format!("Invalid status code on client_res: {}", e);
+                let msg = format!("Invalid status code on client_res: {e}");
                 return Some(BunyanLogParseError::new(msg));
             }
         }
@@ -1110,12 +1104,12 @@ impl Logger for BunyanLine {
     ) -> ParseResult {
         pub fn right_align_and_colorize_log_level(level: LogLevel) -> String {
             match level {
-                LogLevel::TRACE => format!("{: >5}", level),
-                LogLevel::DEBUG => format!("{: >5}", level).yellow().to_string(),
-                LogLevel::INFO => format!("{: >5}", level).cyan().to_string(),
-                LogLevel::WARN => format!("{: >5}", level).magenta().to_string(),
-                LogLevel::ERROR => format!("{: >5}", level).red().to_string(),
-                LogLevel::FATAL => format!("{: >5}", level).reverse().to_string(),
+                LogLevel::TRACE => format!("{level: >5}"),
+                LogLevel::DEBUG => format!("{level: >5}").yellow().to_string(),
+                LogLevel::INFO => format!("{level: >5}").cyan().to_string(),
+                LogLevel::WARN => format!("{level: >5}").magenta().to_string(),
+                LogLevel::ERROR => format!("{level: >5}").red().to_string(),
+                LogLevel::FATAL => format!("{level: >5}").reverse().to_string(),
                 LogLevel::OTHER(_code) => level.to_string(),
             }
         }

@@ -22,8 +22,7 @@ pub fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<DateTim
     match parsed {
         Ok(timestamp) => Ok(timestamp),
         Err(_) => Err(DeError::custom(format!(
-            "Unable to parse timestamp [{}]",
-            time
+            "Unable to parse timestamp [{time}]"
         ))),
     }
 }

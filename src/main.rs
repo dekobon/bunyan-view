@@ -116,7 +116,7 @@ The TRACE, DEBUG, ... FATAL values are defined to help with comparing `this.leve
         Some(level_string) => match LogLevel::parse(level_string) {
             Ok(level) => Some(level.as_u16()),
             Err(e) => {
-                eprintln!("{}: {}", e, level_string);
+                eprintln!("{e}: {level_string}");
                 std::process::exit(1);
             }
         },
@@ -134,7 +134,7 @@ The TRACE, DEBUG, ... FATAL values are defined to help with comparing `this.leve
             "short" => LogFormat::Short,
             "simple" => LogFormat::Simple,
             _mode => {
-                eprintln!("error: unknown output mode: \"{}\"", _mode);
+                eprintln!("error: unknown output mode: \"{_mode}\"");
                 std::process::exit(1);
             }
         },
@@ -170,7 +170,7 @@ The TRACE, DEBUG, ... FATAL values are defined to help with comparing `this.leve
                 match file_result {
                     Ok(_) => {}
                     Err(e) => {
-                        eprintln!("{}: {}", e, filename);
+                        eprintln!("{e}: {filename}");
                         std::process::exit(1);
                     }
                 }
